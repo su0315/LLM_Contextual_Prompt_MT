@@ -1,0 +1,84 @@
+from datasets import load_dataset
+import pandas as pd
+from bs4 import BeautifulSoup
+import numpy as np
+import json
+
+def build_dictionary_from_xml(xml_filepath_list, lang):
+    """
+    Build a dictionary for combined xml files of a language
+    """
+    files_list = []
+    for fp in xml_filepath_list:
+        with open(fp, 'r', encoding="utf-8") as f: # , 
+            data = f.read()
+        bs_data = BeautifulSoup(data, "xml")
+        docs = bs_data.find_all('doc')
+        files_list.append(docs)
+
+    docs_dict = {}
+    for docs in files_list:
+        for doc in docs:
+            #docid = int(doc['docid'])
+            talkid = int(doc.find('talkid').get_text())
+            seg_elements = doc.find_all('seg')
+            segs = [seg.get_text(strip=True) for seg in seg_elements]
+            langs_to_segs = {} 
+            langs_to_segs[lang] = segs
+            docs_dict[f"talk_id {talkid}"] = langs_to_segs
+    
+    return docs_dict
+
+en_xml_filepath_list = ["/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ja-en/IWSLT17.TED.dev2010.ja-en.en.xml",
+                        "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ja-en/IWSLT17.TED.tst2010.ja-en.en.xml",
+                        "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ja-en/IWSLT17.TED.tst2011.ja-en.en.xml",
+                        "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ja-en/IWSLT17.TED.tst2012.ja-en.en.xml",
+                        "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ja-en/IWSLT17.TED.tst2013.ja-en.en.xml",
+                        "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ja-en/IWSLT17.TED.tst2014.ja-en.en.xml",
+                        "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ja-en/IWSLT17.TED.tst2015.ja-en.en.xml",
+                       ]
+
+docs_dict_en = build_dictionary_from_xml(en_xml_filepath_list, lang="en")
+lang_list = ["ar", "fr", "zh", "ko", "de", "ja"]
+lang_dicts = []
+lang_dicts.append(docs_dict_en)
+
+for lang in lang_list:
+    xml_filepath_list = [f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.dev2010.{lang}-en.{lang}.xml",
+                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2010.{lang}-en.{lang}.xml",
+                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2011.{lang}-en.{lang}.xml",
+                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2012.{lang}-en.{lang}.xml",
+                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2013.{lang}-en.{lang}.xml",
+                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2014.{lang}-en.{lang}.xml",
+                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2015.{lang}-en.{lang}.xml",
+                       ]
+    docs_dict = build_dictionary_from_xml(xml_filepath_list, lang)
+    lang_dicts.append(docs_dict)
+
+def get_shared_talkids(lang_dicts):
+    shared_keys = set(lang_dicts[0].keys())
+    for i in lang_dicts[1:]:
+        shared_keys.intersection_update(i.keys())
+    return shared_keys
+
+shared_talk_ids = get_shared_talkids(lang_dicts=lang_dicts)
+
+def combine_langs_into_one_dict(lang_dicts, shared_talk_ids):
+    
+    _multilingual_talks_dict = {}
+
+    for talk_id in shared_talk_ids:
+        talk_dict = {}
+        talk_dict[talk_id] = {}
+        
+        for lang_dict in lang_dicts:
+            talk_dict[talk_id].update(lang_dict[talk_id])
+        
+        _multilingual_talks_dict.update(talk_dict)
+                
+    return _multilingual_talks_dict
+                
+multilingual_talks_dict = combine_langs_into_one_dict(lang_dicts = lang_dicts, shared_talk_ids=shared_talk_ids)
+
+with open("/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ted_multilingual", "w", encoding="utf-8") as outfile:
+    json.dump(multilingual_talks_dict, outfile, indent=4, ensure_ascii=False)
