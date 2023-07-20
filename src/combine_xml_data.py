@@ -38,30 +38,12 @@ en_xml_filepath_list = ["/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt
                         "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ja-en/IWSLT17.TED.tst2015.ja-en.en.xml",
                        ]
 
-docs_dict_en = build_dictionary_from_xml(en_xml_filepath_list, lang="en")
-lang_list = ["ar", "fr", "zh", "ko", "de", "ja"]
-lang_dicts = []
-lang_dicts.append(docs_dict_en)
-
-for lang in lang_list:
-    xml_filepath_list = [f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.dev2010.{lang}-en.{lang}.xml",
-                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2010.{lang}-en.{lang}.xml",
-                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2011.{lang}-en.{lang}.xml",
-                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2012.{lang}-en.{lang}.xml",
-                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2013.{lang}-en.{lang}.xml",
-                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2014.{lang}-en.{lang}.xml",
-                        f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{lang}-en/IWSLT17.TED.tst2015.{lang}-en.{lang}.xml",
-                       ]
-    docs_dict = build_dictionary_from_xml(xml_filepath_list, lang)
-    lang_dicts.append(docs_dict)
-
 def get_shared_talkids(lang_dicts):
     shared_keys = set(lang_dicts[0].keys())
     for i in lang_dicts[1:]:
         shared_keys.intersection_update(i.keys())
     return shared_keys
 
-shared_talk_ids = get_shared_talkids(lang_dicts=lang_dicts)
 
 def combine_langs_into_one_dict(lang_dicts, shared_talk_ids):
     
@@ -78,7 +60,3 @@ def combine_langs_into_one_dict(lang_dicts, shared_talk_ids):
                 
     return _multilingual_talks_dict
                 
-multilingual_talks_dict = combine_langs_into_one_dict(lang_dicts = lang_dicts, shared_talk_ids=shared_talk_ids)
-
-with open("/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ted_multilingual", "w", encoding="utf-8") as outfile:
-    json.dump(multilingual_talks_dict, outfile, indent=4, ensure_ascii=False)
