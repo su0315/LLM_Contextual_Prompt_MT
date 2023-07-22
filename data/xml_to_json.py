@@ -26,7 +26,7 @@ def build_dictionary_from_xml(xml_filepath_list, lang):
             segs = [seg.get_text(strip=True) for seg in seg_elements]
             langs_to_segs = {} 
             langs_to_segs[lang] = segs
-            docs_dict[f"talk_id {talkid}"] = langs_to_segs
+            docs_dict[talkid] = langs_to_segs
     
     return docs_dict
 
@@ -44,16 +44,17 @@ def combine_langs_into_one_dict(lang_dicts, shared_talk_ids):
 
     for talk_id in shared_talk_ids:
         talk_dict = {}
-        talk_dict[talk_id] = {}
+        #talk_dict[talk_id] = {}
     
         for lang_dict in lang_dicts:
-            talk_dict[talk_id].update(lang_dict[talk_id])
+            talk_dict.update(lang_dict[talk_id])
         print (talk_dict)
         doc_dict = {}
+        doc_dict["talk_id"] = talk_id
         doc_dict["doc"] = talk_dict
-
+        
         _multilingual_talks_dict.update(doc_dict)
-        doc_dict_list.append({"doc": talk_dict})
+        doc_dict_list.append(doc_dict)
     
     return doc_dict_list
 
