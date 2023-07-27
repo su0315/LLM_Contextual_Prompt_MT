@@ -58,7 +58,7 @@ def combine_langs_into_one_dict(lang_dicts, shared_talk_ids):
     return doc_dict_list
 
 # Create Parallel json dataset
-def generate_parallel_json(parallel_lang_list, data_dir):
+def generate_parallel_json(parallel_lang_list, data_dir, prompt_talk_id):
 
     for parallel in parallel_lang_list:
         parallel_lang_dicts = []
@@ -82,6 +82,7 @@ def generate_parallel_json(parallel_lang_list, data_dir):
         with open(data_dir+f"/ted_{parallel[0]}-{parallel[1]}", "w", encoding="utf-8") as outfile:
             json.dump(parallel_talks_dict, outfile, indent=4, ensure_ascii=False)
 
+
     # Drop instances of ja/fr/ko/ar/zh not existing in de
     df_ja = pd.read_json(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ted_en-ja")
     df_zh = pd.read_json(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/ted_en-zh")
@@ -100,6 +101,9 @@ def generate_parallel_json(parallel_lang_list, data_dir):
             if talk_id not in df_de["talk_id"].to_numpy():
                 dr_row = df[df["talk_id"]==talk_id].index.item()
                 dropped_rows.append(dr_row)
+            if talk_id == prompt_talk_id:
+                dr_row = df[df["talk_id"]==talk_id].index.item()
+                dropped_rows.append(dr_row)
 
         dropped_df = df.drop(dropped_rows)
         dropped_df.reset_index(inplace=True, drop=True)
@@ -112,6 +116,10 @@ def generate_parallel_json(parallel_lang_list, data_dir):
         if talk_id not in df_fr["talk_id"].to_numpy():
             dr_row = df_de[df_de["talk_id"]==talk_id].index.item()
             dropped_rows.append(dr_row)
+        
+        if talk_id == prompt_talk_id:
+                dr_row = df[df["talk_id"]==talk_id].index.item()
+                dropped_rows.append(dr_row)
 
     dropped_df_de = df_de.drop(dropped_rows)
     dropped_df_de.reset_index(inplace=True, drop=True)
@@ -126,3 +134,4 @@ def generate_parallel_json(parallel_lang_list, data_dir):
             outfile.write(json_object)
 
     # Now all of the data has 92 documents 
+
