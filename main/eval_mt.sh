@@ -1,3 +1,3 @@
 #! /bin/sh
 export PYTHONPATH=.:$PYTHONPATH
-python src/main.py 
+python main/eval_mt.py 
