@@ -16,11 +16,11 @@ def postprocess_text(preds, labels, input_ids):
 def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     preds, labels, input_ids = eval_preds
     #labels = tokenized_datasets["test"]["labels"]  # Why We have to define it again ?? 
-    print ("preds before split:", tokenizer.batch_decode(preds[:5], skip_special_tokens=True))
+    #print ("preds before split:", tokenizer.batch_decode(preds[:5], skip_special_tokens=True))
     #print ("labels:", tokenizer.batch_decode(labels[:5], skip_special_tokens=True))
-    print ()
-    print ("input before split:",tokenizer.batch_decode(input_ids[:5], skip_special_tokens=True))
-    print ()
+    #print ()
+    #print ("input before split:",tokenizer.batch_decode(input_ids[:5], skip_special_tokens=True))
+    #print ()
     
     sep = tokenizer.sep_token_id
     split_id = tokenizer.encode("=")[-1]
@@ -36,24 +36,20 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
     print ("splited preds: ", decoded_preds[:5])
     print ()
-    print ("splitted preds ids: ", preds)
-    print ()
     
     # Store prediction inference
     with open(output_dir+'/translations.txt','w', encoding='utf8') as wf:
          for translation, ids in zip(decoded_preds, preds):
             wf.write(translation.strip()+'\n')
-            wf.write(str(ids)+'\n')
     
     
     # Labels
     labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
     #print ("labels from eval_preds", [tokenizer.decode(i, skip_special_tokens=True) for i in labels])
-    print ()
+    #print ()
     #labels= [ np.array_split(item, np.where(item == sep)[-1])[-1]  for item in labels ]
     #print ("checking labels_token:")
     decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-    print ("splitted labels from dataset: ", decoded_labels[:5])
     print ()
     
     # Input_ids
@@ -78,12 +74,6 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     #print ("decoded_input_ids:",  [item for decoded_input_id in decoded_input_ids for item in decoded_input_id][:5], "\ndecoded_preds", decoded_preds[:5], "\ndecoded_labels", [item for decoded_label in decoded_labels for item in decoded_label][:5])
     
     comet = metric2.compute(predictions=decoded_preds, references=[item for decoded_label in decoded_labels for item in decoded_label], sources = [item for decoded_input_id in decoded_input_ids for item in decoded_input_id])
-    print ("comet")
-    print ("decoded_preds", decoded_preds)
-    print()
-    print ("references", [item for decoded_label in decoded_labels for item in decoded_label])
-    print()
-    print ("source",  [item for decoded_input_id in decoded_input_ids for item in decoded_input_id])
     result["comet"] =  np.mean(comet["scores"])
     prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
     result["gen_len"] = np.mean(prediction_lens)
