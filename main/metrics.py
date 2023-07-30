@@ -3,8 +3,7 @@ import numpy as np
 import preprocess
 import json
 
-metric1 = evaluate.load("sacrebleu")
-metric2 =  evaluate.load("comet")
+
 
 def postprocess_text(preds, labels, input_ids):
     preds = [pred.strip() for pred in preds]
@@ -13,8 +12,12 @@ def postprocess_text(preds, labels, input_ids):
 
     return preds, labels, input_ids
 
+
+
+
 def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     preds, labels, input_ids = eval_preds
+    
     #labels = tokenized_datasets["test"]["labels"]  # Why We have to define it again ?? 
     #print ("preds before split:", tokenizer.batch_decode(preds[:5], skip_special_tokens=True))
     #print ("labels:", tokenizer.batch_decode(labels[:5], skip_special_tokens=True))
@@ -31,16 +34,12 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     #preds = [ np.array_split(item, np.where(item == sep)[-1])[-1]  for item in preds ]
     preds = [ np.array_split(item, np.where(item == split_id)[-1])[-1]  for item in preds ]
     del_index= [0, 1] # Delete "= " in the beggining of the prediction 
+    
     preds =[ np.delete(item, del_index) for item in preds ]
     
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
     print ("splited preds: ", decoded_preds[:5])
     print ()
-    
-    # Store prediction inference
-    with open(output_dir+'/translations.txt','w', encoding='utf8') as wf:
-         for translation, ids in zip(decoded_preds, preds):
-            wf.write(translation.strip()+'\n')
     
     
     # Labels
@@ -50,7 +49,7 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     #labels= [ np.array_split(item, np.where(item == sep)[-1])[-1]  for item in labels ]
     #print ("checking labels_token:")
     decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-    print ()
+    print ("splitted labels: ", decoded_labels[:5])
     
     # Input_ids
     #input_ids = np.where(input_ids != -100, input_ids, tokenizer.pad_token_id)
@@ -63,6 +62,11 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
 
     decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids)
     
+    metric1 = evaluate.load("sacrebleu")
+    metric2 =  evaluate.load("comet")
+    #metric1.add_batch(predictions=decoded_preds, references = decoded_labels)
+    #metric2.add_batch(predictions=decoded_preds, references=[item for decoded_label in decoded_labels for item in decoded_label], sources = [item for decoded_input_id in decoded_input_ids for item in decoded_input_id])
+
     # bleu
     if tgt_lang == "ja":
         bleu = metric1.compute(predictions=decoded_preds, references=decoded_labels, tokenize='ja-mecab')
@@ -80,9 +84,6 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     result = {k: round(v, 4) for k, v in result.items()}
     print(result)
 
-    # Store the score
-    with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
-        for key, value in result.items():
-            wf.write(f"{key}: {value}\n") #ensure_ascii=False
+    
 
-    return result
+    return result, decoded_preds

@@ -12,22 +12,16 @@ def generate_prompt(data, tgt_lang, k, prompt_talk_id):
     return _prompt
 
 def preprocess_function(tgt_lang, prompt, prompt_talk_id, tokenizer, data): # data should be splitted into train / dev / test internally
-    
-    """
-    print ("what is doc", data["talk_id"])
-    for talk_id, doc in zip(data["talk_id"],data["doc"]):
-        print ("what is talkid", talk_id, "what is doc", doc)
-        if talk_id == int(prompt_talk_id):
-            data.pop(doc)
-            print ( "popped")
-            break 
-    """
-    inputs = [prompt + sent + ' = ' for doc in data["doc"] for sent in doc["en"]] ## [1:] to eliminate Few shot example
-    print ("input", inputs[0])
-    targets = [sent for doc in data["doc"] for sent in doc[tgt_lang]]
+    # Remove prompt talk
+    prompt_talk_index = data["talk_id"].index(prompt_talk_id)
+    data["doc"].pop(prompt_talk_index)
+    print ("popped_docs", data["talk_id"])
+
+    inputs = [prompt + sent + ' = ' for doc in data["doc"][:3] for sent in doc["en"]] ## [1:] to eliminate Few shot example
+    targets = [sent for doc in data["doc"][:3] for sent in doc[tgt_lang]]
 
     model_inputs = tokenizer(
-        inputs, text_target=targets, return_tensors="pt", max_length=128, padding='max_length', truncation=True, padding_side = 'left', truncation_side='left') #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
+        inputs, text_target=targets, return_tensors="pt", max_length=256, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
     #print ("model_inputs_keys", model_inputs.keys())
     #print ('model_inputs["input_ids"]', tokenizer.batch_decode(model_inputs["input_ids"], skip_special_tokens=True))
     #print ('model_inputs["labels"]', tokenizer.batch_decode(model_inputs["labels"], skip_special_tokens=True))

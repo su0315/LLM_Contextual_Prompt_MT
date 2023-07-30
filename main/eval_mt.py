@@ -1,4 +1,4 @@
-from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast
 from datasets import load_dataset, concatenate_datasets, load_from_disk
 import evaluate
 import numpy as np
@@ -10,126 +10,106 @@ from functools import partial
 import json
 from main.preprocess import preprocess_function, generate_prompt
 from main.metrics import compute_metrics
+from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
+                          namespace_to_dict)
 
-training_args = Seq2SeqTrainingArguments(
-    output_dir="./results/xglm",
-    evaluation_strategy="steps",
-    learning_rate=2e-5,
-    weight_decay=0.01,
-    per_device_eval_batch_size=4, 
-    do_predict=True,
-    do_eval = True,
-    predict_with_generate=True,
-    include_inputs_for_metrics=True,
-    warmup_steps = 500,
-    #metric_for_best_model = "comet"
-    #load_best_model_at_end = True,
-    greater_is_better = True,
-    #save_strategy = "steps",
-    eval_delay = 0.0,
-    eval_accumulation_steps = 20,
-    label_names = ["labels"]
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] =":4096:8"
+
+def read_arguments() -> ArgumentParser:
+    parser = ArgumentParser(description="Command for evaluating models.")
+    parser.add_argument("--cfg", action=ActionConfigFile)
+    parser.add_argument("--generic.tgt_lang", required=True, help="target language")
+    #parser.add_class_arguments(EarlyStoppingCallback, "early_stopping")
+    #parser.add_argument("--cfg", action=ActionConfigFile)
+    #parser.add_argument("--generic.src_lang", required=True)
+    parser.add_argument("--generic.data_path", required=True, metavar="FILE", help="path to model file for bsd is '/home/sumire/discourse_context_mt/data/BSD-master/'")
+    #parser.add_argument("--generic.src_context",type=int, default="src", help="the number of the target context sentence for each input")
+    #parser.add_argument("--generic.dropout", type=float, choices=np.arange(0.0, 1.0, 0.1), default=0, help="the coword dropout rate")
+    #parser.add_argument("--generic.speaker", type=bool, default=False)
+    #parser.add_argument("--generic.random_context", type=bool, default=False)
+    #parser.add_argument("--generic.tag", type=bool, default=False)
+    #parser.add_argument("--generic.output_dir", required=True, metavar="DIRECTORY", help="path to model file for bsd is '/home/sumire/discourse_context_mt/data/BSD-master/'")
+    parser.add_argument("--generic.batch_size", type=int, default=0, help="the batch size of evaluation")
+    parser.add_argument("--generic.model_checkpoint", required=True, metavar="FILE", help="model_checkpoint")
+    parser.add_argument("--generic.k", type=int, default=0, help="the number of few shot")
+    parser.add_argument("--generic.prompt_talk_id", type=int, default=0, help="the talk id to be used for few shot learning")
+    parser.add_argument("--generic.max_new_tokens", type=int, default=0, help="max_new_tokens")
     
-)
+    return parser
 
 def main():
+    parser = read_arguments()
+    cfg = parser.parse_args()
+    print(cfg)
 
-    tgt_lang = "ja"
-    data_path = "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/"
-    model_size = "4.5B"
-    #model_checkpoint = "facebook/xglm-1.7B"
-    model_checkpoint = f"facebook/xglm-{model_size}"
-    #model_checkpoint = "facebook/xglm-7.5B"
-
-    output_dir = f"./results/xglm/{model_size}"
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+    tgt_lang = cfg.generic.tgt_lang
+    data_path = cfg.generic.data_path
+    model_checkpoint = cfg.generic.model_checkpoint
+    batch_size = cfg.generic.batch_size
+    k = cfg.generic.k
+    prompt_talk_id =  cfg.generic.prompt_talk_id
+    max_new_tokens = cfg.generic.max_new_tokens
     
-    k = 3
-    prompt_talk_id =  int(1548)
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
+    model = XGLMForCausalLM.from_pretrained(model_checkpoint)
+    output_dir = f"./results/{model_checkpoint}"
+        
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
     data_files = { "test": f"{data_path}ted_en-{tgt_lang}"}
     dataset = load_dataset("json", data_files=data_files)
     
-    tokenizer = XGLMTokenizer.from_pretrained(model_checkpoint) # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
     prompt = generate_prompt(dataset, tgt_lang, k, prompt_talk_id)
     inputs = preprocess_function(tgt_lang, prompt, prompt_talk_id, tokenizer, dataset["test"]).input_ids
     labels = preprocess_function(tgt_lang, prompt, prompt_talk_id, tokenizer, dataset["test"]).labels
-    model = XGLMForCausalLM.from_pretrained(model_checkpoint)
     
-    # Predict
-    
-    outputs = model.generate(inputs, max_new_tokens=100, do_sample=True, top_k=50, top_p=0.95) # 
-    predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
-    print ("predictions", predictions)
-    
-    # Evaluate 
-    eval_preds = (outputs, labels, inputs)
-    print (eval_preds)
-    compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds)
-    
-    
-    
-    """
-    decoded_predictions = []
-    for ip, label in zip (inputs, labels):
-        print ("check inputs shape", ip)
-        output = model.generate(ip, max_new_tokens=100, do_sample=True, top_k=50, top_p=0.95) # 
-        decoded_pred = tokenizer.batch_decode(output, skip_special_tokens=True)
-        decoded_predictions.append(decoded_pred)
-      
-    print ("predictions", predictions)
-    """
+    # Predict all in once
+    #outputs = model.generate(inputs, max_new_tokens=100, do_sample=True, top_k=50, top_p=0.95) # 
+    #predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+    #print ("predictions", predictions)
 
+    outputs_list = []
+    decoded_preds_list = []
+    results = []
+    bleu_sum = 0
+    comet_sum = 0
+    gen_len_sum = 0
 
-    """
-    # Parameters
-    tgt_lang = "ja"
-    data_path = "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/"
-    output_dir = "./results/playingaround"
-    model_checkpoint = "facebook/xglm-1.7B"
-    #model_checkpoint = "facebook/xglm-2.9B"
-    #model_checkpoint = "facebook/xglm-4.5B"
-    #model_checkpoint = "facebook/xglm-7.5B"
-    #model_checkpoint = "bigscience/mt0-small"
-    k = 3
-    prompt_talk_id =  int(1548)
-    
-    tokenizer = XGLMTokenizer.from_pretrained(model_checkpoint,padding_side = 'left', max_new_tokens=250, max_length=250, truncation=True, padding='max_length')
-    #tokenizer = AutoTokenizer.from_pretrained(model_checkpoint,padding_side = 'left', truncation=True, padding='max_length', max_new_tokens=250)
-    
-    model =  XGLMForCausalLM.from_pretrained(model_checkpoint)
-    #model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
-    
-    max_length = 128
-
-    data_files = { "test": f"{data_path}ted_en-{tgt_lang}"}
-    dataset = load_dataset("json", data_files=data_files)
-    #print ("Primt dataset"dataset["test"][1]["doc"]["en"])
-    prompt = generate_prompt(dataset, tgt_lang, k, prompt_talk_id)
-    
-    tokenized_datasets = dataset.map(
-        partial(preprocess_function, tgt_lang, prompt, prompt_talk_id, tokenizer),
-        batched=True,
-        remove_columns=dataset["test"].column_names,
-        )
-    tokenized_datasets.save_to_disk(f'./tokenized/ted_en-{tgt_lang}')
-    
-    #tokenized_datasets = load_from_disk(f'./tokenized/ted_en-{tgt_lang}')
-
-    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-
-    trainer = Seq2SeqTrainer(
-        model=model,
-        args=training_args,
-        #train_dataset=tokenized_datasets["train"],
-        eval_dataset=tokenized_datasets["test"],
-        compute_metrics=partial(compute_metrics, dataset, output_dir, tgt_lang, tokenizer),
-        data_collator=data_collator,
-        )
     model.eval()
-    trainer.evaluate()
-    """
-    
+    with torch.no_grad():
+        num_batches = 0
+        for batch in range(0, len(inputs), batch_size):
+            num_batches += 1
+            print ("batch", batch, "to", batch+batch_size)
+            input = inputs[batch:batch+batch_size, :]
+            label = labels[batch:batch+batch_size, :]
+            output = model.generate(input, max_new_tokens=max_new_tokens, do_sample=True, top_k=50, top_p=0.95) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
+            outputs_list.append(output)
+            eval_preds = (output, label, input)
+            result, decoded_preds = compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds)
+            decoded_preds_list.append(decoded_preds)
+            bleu_sum += result["bleu"]
+            comet_sum += result["comet"]
+            gen_len_sum += result["gen_len"]
+
+    # Store prediction inference
+    with open(output_dir+'/translations.txt','w', encoding='utf8') as wf:
+        for decoded_preds, outputs in zip(decoded_preds_list, outputs_list):
+            for translation, ids in zip(decoded_preds, outputs):
+                wf.write(translation.strip()+'\n')
+
+    # Store the score
+    with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
+        bleu = bleu_sum / num_batches
+        comet = comet_sum / num_batches
+        gen_len = gen_len_sum/ num_batches
+
+        wf.write(f"bleu: {bleu}\n") #ensure_ascii=False
+        wf.write(f"comet: {comet}\n") 
+        wf.write(f"gen_len: {gen_len}\n") 
+
 
 if __name__ == "__main__":
     main()
