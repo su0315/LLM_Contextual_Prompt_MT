@@ -135,11 +135,12 @@ def main():
         wf.write(f"comet: {comet}\n") 
         wf.write(f"gen_len: {gen_len}\n") 
 
-    
+    """
     with open(output_dir+'/config','w', encoding='utf8') as wf:
         for i in [ tgt_lang, data_path, model_checkpoint, batch_size, k,prompt_talk_id, max_new_tokens, max_length, cfg_name]:
-            wf.write(i + "\n")
-
+            wf.write(i"\n")
+    """
+    
 if __name__ == "__main__":
     main()
 
