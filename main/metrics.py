@@ -52,7 +52,8 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     print ("splitted labels: ", decoded_labels[:5])
     
     # Input_ids
-    #input_ids = np.where(input_ids != -100, input_ids, tokenizer.pad_token_id)
+    input_ids = np.where(input_ids != -100, input_ids, tokenizer.pad_token_id)
+    print ("input with prompts", input_ids)
     input_ids = [ np.array_split(item, np.where(item == sep)[-1])[-1]  for item in input_ids ]
     input_ids = [ np.array_split(item, np.where(item == split_id)[-1])[0]  for item in input_ids ] 
     decoded_input_ids = tokenizer.batch_decode(input_ids, skip_special_tokens=True)
@@ -86,4 +87,4 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
 
     
 
-    return result, decoded_preds
+    return result, decoded_preds, decoded_labels, decoded_input_ids
