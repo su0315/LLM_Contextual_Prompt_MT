@@ -58,7 +58,7 @@ def combine_langs_into_one_dict(lang_dicts, shared_talk_ids):
     return doc_dict_list
 
 # Create Parallel json dataset
-def generate_parallel_json(parallel_lang_list, data_dir, prompt_talk_id):
+def generate_parallel_json(parallel_lang_list, data_dir):
 
     for parallel in parallel_lang_list:
         parallel_lang_dicts = []
@@ -101,10 +101,11 @@ def generate_parallel_json(parallel_lang_list, data_dir, prompt_talk_id):
             if talk_id not in df_de["talk_id"].to_numpy():
                 dr_row = df[df["talk_id"]==talk_id].index.item()
                 dropped_rows.append(dr_row)
+            """
             if talk_id == prompt_talk_id:
                 dr_row = df[df["talk_id"]==talk_id].index.item()
                 dropped_rows.append(dr_row)
-
+            """
         dropped_df = df.drop(dropped_rows)
         dropped_df.reset_index(inplace=True, drop=True)
         dropped_df_list.append(dropped_df)
@@ -117,10 +118,11 @@ def generate_parallel_json(parallel_lang_list, data_dir, prompt_talk_id):
             dr_row = df_de[df_de["talk_id"]==talk_id].index.item()
             dropped_rows.append(dr_row)
         
+        """
         if talk_id == prompt_talk_id:
                 dr_row = df[df["talk_id"]==talk_id].index.item()
                 dropped_rows.append(dr_row)
-
+        """
     dropped_df_de = df_de.drop(dropped_rows)
     dropped_df_de.reset_index(inplace=True, drop=True)
     dropped_df_list.append(dropped_df_de)

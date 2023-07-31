@@ -8,12 +8,12 @@ import os
 from transformers import DataCollatorForLanguageModeling
 from functools import partial
 import json
-from main.preprocess import preprocess_function, generate_prompt
+from main.preprocess import preprocess_function, generate_prompt, preprocess_function_bsd, generate_prompt_bsd
 from main.metrics import compute_metrics
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
 
-#os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 #os.environ["CUBLAS_WORKSPACE_CONFIG"] =":4096:8"
 
 def read_arguments() -> ArgumentParser:
@@ -59,18 +59,28 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
     model = XGLMForCausalLM.from_pretrained(model_checkpoint)
-    output_dir = f"./results/{model_checkpoint}/{cfg_name}"
-        
+    
+    
+    if "iwslt_hf" in data_path:
+        data_files = { "test": f"{data_path}ted_en-{tgt_lang}"}
+        dataset = load_dataset("json", data_files=data_files)
+    
+        prompt = generate_prompt(dataset["test"], tgt_lang, k, prompt_talk_id)
+        inputs = preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
+        labels = preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
+        output_dir = f"./results/{model_checkpoint}/ted/en-{tgt_lang}/{cfg_name}/"
+
+    elif "BSD-master" in data_path:
+        data_files = { "test":"/home/sumire/discourse_context_mt/data/BSD-master/test.json"}
+        dataset = load_dataset("json", data_files=data_files)
+        prompt = generate_prompt_bsd(dataset["test"], tgt_lang, k)
+        inputs = preprocess_function_bsd(tgt_lang, prompt, max_length, tokenizer, dataset["test"]).input_ids
+        labels = preprocess_function_bsd(tgt_lang, prompt, max_length, tokenizer, dataset["test"]).labels
+        output_dir = f"./results/{model_checkpoint}/BSD/en-{tgt_lang}/{cfg_name}/"
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    
-    data_files = { "test": f"{data_path}ted_en-{tgt_lang}"}
-    dataset = load_dataset("json", data_files=data_files)
-    
-    prompt = generate_prompt(dataset, tgt_lang, k, prompt_talk_id)
-    inputs = preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
-    labels = preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
-    
+
     # Predict all in once
     #outputs = model.generate(inputs, max_new_tokens=100, do_sample=True, top_k=50, top_p=0.95) # 
     #predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
@@ -135,11 +145,11 @@ def main():
         wf.write(f"comet: {comet}\n") 
         wf.write(f"gen_len: {gen_len}\n") 
 
-    """
+    
     with open(output_dir+'/config','w', encoding='utf8') as wf:
         for i in [ tgt_lang, data_path, model_checkpoint, batch_size, k,prompt_talk_id, max_new_tokens, max_length, cfg_name]:
-            wf.write(i"\n")
-    """
+            wf.write(f"{i}\n")
+    
     
 if __name__ == "__main__":
     main()

@@ -38,7 +38,7 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     preds =[ np.delete(item, del_index) for item in preds ]
     
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-    print ("splited preds: ", decoded_preds[:5])
+    #print ("splited preds: ", decoded_preds[:5])
     print ()
     
     
@@ -49,15 +49,15 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     #labels= [ np.array_split(item, np.where(item == sep)[-1])[-1]  for item in labels ]
     #print ("checking labels_token:")
     decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-    print ("splitted labels: ", decoded_labels[:5])
+    #print ("splitted labels: ", decoded_labels[:5])
     
     # Input_ids
     input_ids = np.where(input_ids != -100, input_ids, tokenizer.pad_token_id)
-    print ("input with prompts", input_ids)
+    print ("input with prompts", tokenizer.batch_decode(input_ids, skip_special_tokens=True))
     input_ids = [ np.array_split(item, np.where(item == sep)[-1])[-1]  for item in input_ids ]
     input_ids = [ np.array_split(item, np.where(item == split_id)[-1])[0]  for item in input_ids ] 
     decoded_input_ids = tokenizer.batch_decode(input_ids, skip_special_tokens=True)
-    print ("splited input_ids", decoded_input_ids[:5])
+    #print ("splited input_ids", decoded_input_ids[:5])
     print ()
     
 
@@ -76,7 +76,7 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     result = {"bleu": bleu["score"]}
 
     # comet
-    #print ("decoded_input_ids:",  [item for decoded_input_id in decoded_input_ids for item in decoded_input_id][:5], "\ndecoded_preds", decoded_preds[:5], "\ndecoded_labels", [item for decoded_label in decoded_labels for item in decoded_label][:5])
+    print ("COMET", "decoded_input_ids:",  [item for decoded_input_id in decoded_input_ids for item in decoded_input_id][:5], "\ndecoded_preds", decoded_preds[:5], "\ndecoded_labels", [item for decoded_label in decoded_labels for item in decoded_label][:5])
     
     comet = metric2.compute(predictions=decoded_preds, references=[item for decoded_label in decoded_labels for item in decoded_label], sources = [item for decoded_input_id in decoded_input_ids for item in decoded_input_id])
     result["comet"] =  np.mean(comet["scores"])
@@ -84,7 +84,5 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     result["gen_len"] = np.mean(prediction_lens)
     result = {k: round(v, 4) for k, v in result.items()}
     print(result)
-
-    
 
     return result, decoded_preds, decoded_labels, decoded_input_ids
