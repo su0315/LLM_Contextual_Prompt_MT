@@ -1,21 +1,32 @@
 
-def generate_prompt(data, tgt_lang, k, prompt_talk_id):
+def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
     #K-shot Prompt
-
     _prompt = ""
 
     for doc in data:
         if doc["talk_id"] == prompt_talk_id:
             for en_sent, tgt_lang_sent in zip(doc["doc"]["en"][13:13+k], doc["doc"][tgt_lang][13:13+k]):
-                k_shot = f"{en_sent} = {tgt_lang_sent} </s> "
+                if "xglm" in model_checkpoint:
+                    k_shot = f"{en_sent} = {tgt_lang_sent} </s> "
+
+                if "llama" in model_checkpoint:
+                    k_shot =f"{en_sent} => {tgt_lang_sent} /n"
                 _prompt += k_shot
     return _prompt
 
-def preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
+def preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
+    
+
+    target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
+    
     # Identify prompt talk
     prompt_talk_index = data["talk_id"].index(prompt_talk_id)
+    if "xglm" in model_checkpoint:
+        inputs = [prompt + sent + ' = ' for doc in data["doc"][prompt_talk_index+1:5] for sent in doc["en"]] ## [1:] to eliminate Few shot example
 
-    inputs = [prompt + sent + ' = ' for doc in data["doc"][prompt_talk_index+1:5] for sent in doc["en"]] ## [1:] to eliminate Few shot example
+    if "llama" in model_checkpoint:
+        inputs = [f"""Translate English to {target_language[tgt_lang]}: {prompt}{sent} =>""" for doc in data["doc"][prompt_talk_index+1:5] for sent in doc["en"]] ## [1:] to eliminate Few shot example
+
     targets = [sent for doc in data["doc"][prompt_talk_index+1:5]for sent in doc[tgt_lang]]
 
     model_inputs = tokenizer(

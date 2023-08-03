@@ -1,4 +1,4 @@
-from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast
+from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, XGLMConfig
 from datasets import load_dataset, concatenate_datasets, load_from_disk
 import evaluate
 import numpy as np
@@ -58,16 +58,17 @@ def main():
     cfg_name = cfg.generic.cfg_name
 
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
-    model = XGLMForCausalLM.from_pretrained(model_checkpoint)
+    configuration = XGLMConfig()
+    model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint)
     
     
     if "iwslt_hf" in data_path:
         data_files = { "test": f"{data_path}ted_en-{tgt_lang}"}
         dataset = load_dataset("json", data_files=data_files)
     
-        prompt = generate_prompt(dataset["test"], tgt_lang, k, prompt_talk_id)
-        inputs = preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
-        labels = preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
+        prompt = generate_prompt(dataset["test"], tgt_lang, model_checkpoint, k, prompt_talk_id)
+        inputs = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
+        labels = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
         output_dir = f"./results/{model_checkpoint}/ted/en-{tgt_lang}/{cfg_name}/"
 
     elif "BSD-master" in data_path:
