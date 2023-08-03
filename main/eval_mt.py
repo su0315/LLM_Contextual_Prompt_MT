@@ -1,4 +1,4 @@
-from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast
+from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, LlamaTokenizer, LlamaModel
 from datasets import load_dataset, concatenate_datasets, load_from_disk
 import evaluate
 import numpy as np
@@ -57,8 +57,13 @@ def main():
     max_length = cfg.generic.max_length
     cfg_name = cfg.generic.cfg_name
 
-    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
-    model = XGLMForCausalLM.from_pretrained(model_checkpoint)
+    if "llama" in model_checkpoint:
+        tokenizer = LlamaTokenizerTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
+        model = LlamaForCausalLM.from_pretrained(model_checkpoint)
+
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
+        model = XGLMForCausalLM.from_pretrained(model_checkpoint)
     
     
     if "iwslt_hf" in data_path:
