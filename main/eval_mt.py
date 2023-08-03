@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, LlamaTokenizer, LlamaModel
+=======
+from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, XGLMConfig
+>>>>>>> 45cebb59680a7eac23ad883f2707f79dd0fb6674
 from datasets import load_dataset, concatenate_datasets, load_from_disk
 import evaluate
 import numpy as np
@@ -57,6 +61,7 @@ def main():
     max_length = cfg.generic.max_length
     cfg_name = cfg.generic.cfg_name
 
+<<<<<<< HEAD
     if "llama" in model_checkpoint:
         tokenizer = LlamaTokenizerTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
         model = LlamaForCausalLM.from_pretrained(model_checkpoint)
@@ -64,15 +69,20 @@ def main():
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
         model = XGLMForCausalLM.from_pretrained(model_checkpoint)
+=======
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
+    configuration = XGLMConfig()
+    model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint)
+>>>>>>> 45cebb59680a7eac23ad883f2707f79dd0fb6674
     
     
     if "iwslt_hf" in data_path:
         data_files = { "test": f"{data_path}ted_en-{tgt_lang}"}
         dataset = load_dataset("json", data_files=data_files)
     
-        prompt = generate_prompt(dataset["test"], tgt_lang, k, prompt_talk_id)
-        inputs = preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
-        labels = preprocess_function(tgt_lang, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
+        prompt = generate_prompt(dataset["test"], tgt_lang, model_checkpoint, k, prompt_talk_id)
+        inputs = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
+        labels = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
         output_dir = f"./results/{model_checkpoint}/ted/en-{tgt_lang}/{cfg_name}/"
 
     elif "BSD-master" in data_path:
