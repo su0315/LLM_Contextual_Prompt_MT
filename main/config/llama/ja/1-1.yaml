@@ -9,7 +9,7 @@ generic:
   #random_context: False
   #tag: False
   #output_dir: "./results/" # Modify here
-  batch_size: 32
+  batch_size: 4
   model_checkpoint : /mnt/data-artemis/sumire/hf_llama
   k : 12
   prompt_talk_id : 1548

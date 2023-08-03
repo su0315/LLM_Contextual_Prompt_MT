@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, LlamaTokenizer, LlamaModel
-=======
-from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, XGLMConfig
->>>>>>> 45cebb59680a7eac23ad883f2707f79dd0fb6674
+from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, XGLMConfig, LlamaTokenizer, LlamaForCausalLM
 from datasets import load_dataset, concatenate_datasets, load_from_disk
 import evaluate
 import numpy as np
@@ -18,7 +14,10 @@ from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-#os.environ["CUBLAS_WORKSPACE_CONFIG"] =":4096:8"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] =":4096:8"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print (device)
+
 
 def read_arguments() -> ArgumentParser:
     parser = ArgumentParser(description="Command for evaluating models.")
@@ -41,8 +40,6 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.max_new_tokens", type=int, default=0, help="max_new_tokens")
     parser.add_argument("--generic.max_length", type=int, default=0, help="max_length for input and labels")
     parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
-
-
     
     return parser
 
@@ -60,20 +57,17 @@ def main():
     max_new_tokens = cfg.generic.max_new_tokens
     max_length = cfg.generic.max_length
     cfg_name = cfg.generic.cfg_name
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-<<<<<<< HEAD
     if "llama" in model_checkpoint:
-        tokenizer = LlamaTokenizerTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
+        tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
+        tokenizer.add_special_tokens({'pad_token': '<pad>'}) 
         model = LlamaForCausalLM.from_pretrained(model_checkpoint)
 
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
-        model = XGLMForCausalLM.from_pretrained(model_checkpoint)
-=======
-    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
-    configuration = XGLMConfig()
-    model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint)
->>>>>>> 45cebb59680a7eac23ad883f2707f79dd0fb6674
+        configuration = XGLMConfig()
+        model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint)
     
     
     if "iwslt_hf" in data_path:
@@ -84,13 +78,14 @@ def main():
         inputs = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
         labels = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
         output_dir = f"./results/{model_checkpoint}/ted/en-{tgt_lang}/{cfg_name}/"
-
+        # maybe move to CUDA device inputs 
     elif "BSD-master" in data_path:
         data_files = { "test":"/home/sumire/discourse_context_mt/data/BSD-master/test.json"}
         dataset = load_dataset("json", data_files=data_files)
         prompt = generate_prompt_bsd(dataset["test"], tgt_lang, k)
-        inputs = preprocess_function_bsd(tgt_lang, prompt, max_length, tokenizer, dataset["test"]).input_ids
-        labels = preprocess_function_bsd(tgt_lang, prompt, max_length, tokenizer, dataset["test"]).labels
+        inputs = preprocess_function_bsd(tgt_lang, model_checkpoint, prompt, max_length, tokenizer, dataset["test"]).input_ids
+        #print ("inputs", inputs)
+        labels = preprocess_function_bsd(tgt_lang, model_checkpoint, prompt, max_length, tokenizer, dataset["test"]).labels
         output_dir = f"./results/{model_checkpoint}/BSD/en-{tgt_lang}/{cfg_name}/"
 
     if not os.path.exists(output_dir):
@@ -110,19 +105,21 @@ def main():
     comet_sum = 0
     gen_len_sum = 0
 
+    # ADD model to DEVICE 
+    model.to(device)    
     model.eval()
     with torch.no_grad():
         num_batches = 0
         for batch in range(0, len(inputs), batch_size):
             num_batches += 1
             print ("batch", batch, "to", batch+batch_size)
-            input = inputs[batch:batch+batch_size, :]
-            print ("INPUT", tokenizer.batch_decode(input, skip_special_tokens=True))
+            input = inputs[batch:batch+batch_size, :].to(device)
+            #print ("INPUT", tokenizer.batch_decode(input, skip_special_tokens=True))
             label = labels[batch:batch+batch_size, :]
-            output = model.generate(input, max_new_tokens=max_new_tokens, do_sample=True, top_k=50, top_p=0.95) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
+            output = model.generate(input, max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
             print ("generate is done")
             outputs_list.append(output)
-            eval_preds = (output, label, input)
+            eval_preds = (output.cpu(), label.cpu(), input.cpu())# To convert to numpy in evaluate function
             result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds)
             decoded_preds_list.append(decoded_preds)
             decoded_labels_list.append(decoded_labels)
