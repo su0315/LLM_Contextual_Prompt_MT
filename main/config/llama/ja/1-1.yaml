@@ -11,7 +11,7 @@ generic:
   #output_dir: "./results/" # Modify here
   batch_size: 4
   model_checkpoint : /mnt/data-artemis/sumire/hf_llama
-  k : 12
+  k : 6
   prompt_talk_id : 1548
   max_new_tokens : 128 
   max_length : 512 # 512
