@@ -21,16 +21,19 @@ def preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_
     
     # Identify prompt talk
     prompt_talk_index = data["talk_id"].index(prompt_talk_id)
+    
     if "xglm" in model_checkpoint:
-        inputs = [prompt + sent + ' = ' for doc in data["doc"][prompt_talk_index+1:5] for sent in doc["en"]] ## [1:] to eliminate Few shot example
+        inputs = [prompt + sent + ' = ' for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
 
-    if "llama" in model_checkpoint:
-        inputs = [f"""Translate English to {target_language[tgt_lang]}: {prompt}{sent} =>""" for doc in data["doc"][prompt_talk_index+1:5] for sent in doc["en"]] ## [1:] to eliminate Few shot example
-
-    targets = [sent for doc in data["doc"][prompt_talk_index+1:5]for sent in doc[tgt_lang]]
+    elif "llama" in model_checkpoint:
+        inputs = [f"""Translate English to {target_language[tgt_lang]}: {prompt} {sent} =>""" for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
+    
+    targets = [sent for doc in data["doc"][prompt_talk_index+1:]for sent in doc[tgt_lang]]
 
     model_inputs = tokenizer(
         inputs, text_target=targets, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
+    
+    
     #print ("model_inputs_keys", model_inputs.keys())
     #print ('model_inputs["input_ids"]', tokenizer.batch_decode(model_inputs["input_ids"], skip_special_tokens=True))
     #print ('model_inputs["labels"]', tokenizer.batch_decode(model_inputs["labels"], skip_special_tokens=True))
@@ -52,7 +55,6 @@ def generate_prompt_bsd(data, tgt_lang, k):
         k_shot = f"{en_sent} = {tgt_lang_sent} </s> "
         _prompt += k_shot
        
-    print (_prompt)
     return _prompt
 
 
