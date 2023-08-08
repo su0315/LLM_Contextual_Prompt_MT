@@ -11,9 +11,9 @@ generic:
   #tag: False
   #output_dir: "./results/" # Modify here
   batch_size: 16
-  model_checkpoint : /mnt/data-artemis/sumire/hf_llama
-  k : 3
+  model_checkpoint : /mnt/data/sumire/hf_llama
+  k : 4
   prompt_talk_id : 1548
-  max_new_tokens : 256 #128 
-  max_length : 272 #512 # 512
+  max_new_tokens : 64 #128 
+  max_length : 365 #512 # 512 # 272
   cfg_name : llama2-ja-1-1-max=64
