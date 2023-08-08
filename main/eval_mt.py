@@ -79,8 +79,8 @@ def main():
     
         prompt = generate_prompt(dataset["test"], tgt_lang, model_checkpoint, k, prompt_talk_id)
         inputs = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
-        print (max([torch.where(ip==tokenizer.pad_token_id)[0][0].item() for ip in inputs])) # Checking the max number of tokens ### 270
-        print (max([len(ip) for ip in inputs])) 
+        #print (max([torch.where(ip==tokenizer.pad_token_id)[0][0].item() for ip in inputs])) # Checking the max number of tokens ### 270
+        #print (max([len(ip) for ip in inputs])) 
 
         labels = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
         output_dir = f"./results/ted/en-{tgt_lang}/{cfg_name}/"
@@ -139,7 +139,7 @@ def main():
             """
             
             eval_preds = (batch_output.cpu(), batch_label.cpu(), batch_ip.cpu())# To convert to numpy in evaluate function
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds)
+            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
             decoded_preds_list.append(decoded_preds)
             decoded_labels_list.append(decoded_labels)
             decoded_input_ids_list.append(decoded_input_ids)

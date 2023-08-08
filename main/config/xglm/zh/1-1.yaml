@@ -1,7 +1,7 @@
 generic:
   data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
   #src_lang: en
-  tgt_lang: ja
+  tgt_lang: zh
   #src_context: 0
   #tgt_context: 0
   #dropout: 0.0
@@ -15,4 +15,4 @@ generic:
   prompt_talk_id : 1548
   max_new_tokens : 64 #64 #should be more than 256 otherwise metrics function np.delete will not work 
   max_length : 512 # 512
-  cfg_name : xglm-ja-1-1-max64
+  cfg_name : xglm-zh-1-1-max64

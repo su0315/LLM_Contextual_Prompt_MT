@@ -10,7 +10,7 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
                     k_shot = f"{en_sent} = {tgt_lang_sent} </s> "
 
                 if "llama" in model_checkpoint:
-                    k_shot =f"{en_sent} => {tgt_lang_sent} /n "
+                    k_shot =f"{en_sent} => {tgt_lang_sent} \n "
                 _prompt += k_shot
     return _prompt
 
@@ -26,7 +26,7 @@ def preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_
         inputs = [prompt + sent + ' = ' for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
 
     elif "llama" in model_checkpoint:
-        inputs = [f"""Translate English to {target_language[tgt_lang]}: {prompt} {sent} =>""" for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
+        inputs = [f"""Translate English to {target_language[tgt_lang]}: \n\n {prompt} {sent} =>""" for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
     
     targets = [sent for doc in data["doc"][prompt_talk_index+1:]for sent in doc[tgt_lang]]
 
