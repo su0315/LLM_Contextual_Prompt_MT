@@ -170,3 +170,11 @@ ko-en/
 zh-en/
 multilingual_talks_dict
 .gitignore
+/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf
+data/iwslt_hf/ted_en-ar
+data/iwslt_hf/ted_en-de
+data/iwslt_hf/ted_en-fr
+data/iwslt_hf/ted_en-ja
+data/iwslt_hf/ted_en-ko
+data/iwslt_hf/ted_en-zh
+data/iwslt_hf/ted_multilingual
