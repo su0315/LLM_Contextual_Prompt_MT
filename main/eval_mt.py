@@ -71,8 +71,7 @@ def main():
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
         configuration = XGLMConfig()
-        model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint)
-    
+        model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint)    
     
     if "iwslt_hf" in data_path:
         data_files = { "test": f"{data_path}ted_en-{tgt_lang}"}
@@ -133,13 +132,23 @@ def main():
         for batch in range(0, len(inputs), batch_size):
             num_batches += 1
             print ("batch", batch, "to", batch+batch_size)
-            input = inputs[batch:batch+batch_size, :].to(device)
-            print ("INPUT", tokenizer.batch_decode(input, skip_special_tokens=True))
-            label = labels[batch:batch+batch_size, :]
-            output = model.generate(input, max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
+            batch_ip = inputs[batch:batch+batch_size, :].to(device)
+            print ("INPUT1", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
+            batch_label = labels[batch:batch+batch_size, :]
+            batch_output = model.generate(batch_ip, max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
+            print ("OUTPUT1", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
+            batch_output = batch_output[:, max_length:] # Remove the input before pred and </s> after pred 
+            print ("OUTPUT2", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
             print ("generate is done")
-            outputs_list.append(output)
-            eval_preds = (output.cpu(), label.cpu(), input.cpu())# To convert to numpy in evaluate function
+            outputs_list.append(batch_output)
+        
+            if "xglm" in model_checkpoint:
+                batch_ip = batch_ip[:, :-1]# Remove "=" after the input for xglm
+                print ("INPUT2", tokenizer.batch_decode(batch_ip), skip_special_tokens=True)
+            if "llama" in model_checkpoint:
+                batch_ip = batch_ip[:, :-2]#Remove
+                print ("INPUT2", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
+            eval_preds = (batch_output.cpu(), batch_label.cpu(), batch_ip.cpu())# To convert to numpy in evaluate function
             result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds)
             decoded_preds_list.append(decoded_preds)
             decoded_labels_list.append(decoded_labels)

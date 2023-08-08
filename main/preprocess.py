@@ -10,7 +10,7 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
                     k_shot = f"{en_sent} = {tgt_lang_sent} </s> "
 
                 if "llama" in model_checkpoint:
-                    k_shot =f"{en_sent} => {tgt_lang_sent} /n"
+                    k_shot =f"{en_sent} => {tgt_lang_sent} /n "
                 _prompt += k_shot
     return _prompt
 
