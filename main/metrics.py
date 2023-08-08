@@ -5,25 +5,20 @@ import json
 
 
 
-def postprocess_text(preds, labels, input_ids):
+def postprocess_text(preds, labels, input_ids, model_checkpoint):
     preds = [pred.strip() for pred in preds]
     labels = [[label.strip()] for label in labels]
     input_ids = [[input_id.strip()] for input_id in input_ids]
-    # LLAMA post process, cu
+    # Llama post process, cu
+    if "llama" in model_checkpoint:
+        preds = [pred.split("\n")[0] for pred in preds] # Extract only the first prediction 
+        input_ids = [[input_id.split("\n")[-1][:-2]] for input_id in input_ids] # Extract the input from examples + input [:-2] works for removing "=>" ?
+
     return preds, labels, input_ids
 
 
-
-
-def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
+def compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds):
     preds, labels, input_ids = eval_preds
-    
-    #labels = tokenized_datasets["test"]["labels"]  # Why We have to define it again ?? 
-    #print ("preds before split:", tokenizer.batch_decode(preds[:5], skip_special_tokens=True))
-    #print ("labels:", tokenizer.batch_decode(labels[:5], skip_special_tokens=True))
-    #print ()
-    #print ("input before split:",tokenizer.batch_decode(input_ids[:5], skip_special_tokens=True))
-    #print ()
     
     sep = tokenizer.sep_token_id
     split_id = tokenizer.encode("=")[-1]
@@ -39,7 +34,7 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
     #print ("splited preds: ", decoded_preds[:5])
-    print ()
+    #print ()
     
     
     # Labels
@@ -55,11 +50,13 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     #print ("input with prompts1", tokenizer.batch_decode(input_ids, skip_special_tokens=True))
     input_ids = np.where(input_ids != -100, input_ids, tokenizer.pad_token_id)
     #print ("input with prompts2", tokenizer.batch_decode(input_ids, skip_special_tokens=True))
-    input_ids = [ np.array_split(item, np.where(item == sep)[-1])[-1]  for item in input_ids ]
-    #input_ids = [ np.array_split(item, np.where(item == split_id)[-1])[0]  for item in input_ids ] # Split id "=" or "=>" should be eliminated in ecal?mt.py 
+    
+    if "xglm" in model_checkpoint:
+        input_ids = [ np.array_split(item, np.where(item == sep)[-1])[-1][:-1]  for item in input_ids ]
+        #input_ids = [ np.array_split(item, np.where(item == split_id)[-1])[0]  for item in input_ids ] # Split id "=" or "=>" should be eliminated in ecal?mt.py 
     decoded_input_ids = tokenizer.batch_decode(input_ids, skip_special_tokens=True)
     #print ("splited input_ids", decoded_input_ids[:5])
-    print ()
+    #print ()
     
 
     decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids)
@@ -77,7 +74,7 @@ def compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds):
     result = {"bleu": bleu["score"]}
 
     # comet
-    print ("COMET", "decoded_input_ids:",  [item for decoded_input_id in decoded_input_ids for item in decoded_input_id][:5], "\ndecoded_preds", decoded_preds[:5], "\ndecoded_labels", [item for decoded_label in decoded_labels for item in decoded_label][:5])
+    print ("COMET", "decoded_input_ids:",  [item for decoded_input_id in decoded_input_ids for item in decoded_input_id][:5], "\nCOMET: decoded_preds", decoded_preds[:5], "\nCOMET: decoded_labels", [item for decoded_label in decoded_labels for item in decoded_label][:5])
     
     comet = metric2.compute(predictions=decoded_preds, references=[item for decoded_label in decoded_labels for item in decoded_label], sources = [item for decoded_input_id in decoded_input_ids for item in decoded_input_id])
     result["comet"] =  np.mean(comet["scores"])

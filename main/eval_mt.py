@@ -68,7 +68,7 @@ def main():
         model.resize_token_embeddings(len(tokenizer))
         model.config.pad_token_id = tokenizer.pad_token_id
         
-    else:
+    elif "xglm" in model_checkpoint:
         tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
         configuration = XGLMConfig()
         model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint)    
@@ -79,24 +79,12 @@ def main():
     
         prompt = generate_prompt(dataset["test"], tgt_lang, model_checkpoint, k, prompt_talk_id)
         inputs = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
-        # Unless we set max_length=512/new_tokens=256, some instances will exceed the length, and cannot work with metrics function to separate "=>" 
-        #for ip in inputs: 
-            #print (torch.where(ip==tokenizer.pad_token_id)[0][0].item())## index error
-        #num_tokens = []
-        #pad_indices_lists = [torch.where(ip==tokenizer.pad_token_id)[0].tolist() for ip in inputs]
-        #print (pad_indices_lists[425:430])
-        #for id, list in enumerate(pad_indices_lists):
-            #if list ==[]:
-                #print (id, list)
-                #print (list[0])
-            #num_tokens.append(list[0])
-        #print (max(num_tokens))
         print (max([torch.where(ip==tokenizer.pad_token_id)[0][0].item() for ip in inputs])) # Checking the max number of tokens ### 270
         print (max([len(ip) for ip in inputs])) 
 
         labels = preprocess_function(tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
         output_dir = f"./results/ted/en-{tgt_lang}/{cfg_name}/"
-        # maybe move to CUDA device inputs 
+   
     
     elif "BSD-master" in data_path:
         data_files = { "test":"/home/sumire/discourse_context_mt/data/BSD-master/test.json"}
@@ -124,7 +112,6 @@ def main():
     comet_sum = 0
     gen_len_sum = 0
 
-    # ADD model to DEVICE 
     model.to(device)    
     model.eval()
     with torch.no_grad():
@@ -142,12 +129,15 @@ def main():
             print ("generate is done")
             outputs_list.append(batch_output)
         
+            """
             if "xglm" in model_checkpoint:
                 batch_ip = batch_ip[:, :-1]# Remove "=" after the input for xglm
                 print ("INPUT2", tokenizer.batch_decode(batch_ip), skip_special_tokens=True)
             if "llama" in model_checkpoint:
-                batch_ip = batch_ip[:, :-2]#Remove
+                batch_ip = batch_ip[:, :-2]#Remove "=>"
                 print ("INPUT2", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
+            """
+            
             eval_preds = (batch_output.cpu(), batch_label.cpu(), batch_ip.cpu())# To convert to numpy in evaluate function
             result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, output_dir, tgt_lang, tokenizer, eval_preds)
             decoded_preds_list.append(decoded_preds)
