@@ -140,14 +140,30 @@ def main():
             
             eval_preds = (batch_output.cpu(), batch_label.cpu(), batch_ip.cpu())# To convert to numpy in evaluate function
             result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
-            decoded_preds_list.append(decoded_preds)
-            decoded_labels_list.append(decoded_labels)
-            decoded_input_ids_list.append(decoded_input_ids)
+            
+            with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
+                for decoded_pred, output in zip(decoded_preds, batch_output):
+                    wf.write(decoded_pred.strip()+'\n')
+
+            with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
+                for decoded_label in (decoded_labels):
+                    for item in decoded_label:
+                        wf.write(item.strip()+'\n')
+
+            with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
+                for decoded_input_id in (decoded_input_ids):
+                    wf.write(decoded_input_id.strip()+'\n')
+            
+            #decoded_preds_list.append(decoded_preds)
+            #decoded_labels_list.append(decoded_labels)
+            #decoded_input_ids_list.append(decoded_input_ids)
             bleu_sum += result["bleu"]
             comet_sum += result["comet"]
             gen_len_sum += result["gen_len"]
-        
 
+
+        
+    """
     # Store prediction inference
     with open(output_dir+'/translations.txt','w', encoding='utf8') as wf:
         for decoded_preds, outputs in zip(decoded_preds_list, outputs_list):
@@ -165,6 +181,7 @@ def main():
             for i in decoded_input_ids:
                 for source in i:
                     wf.write(source.strip()+'\n')
+    """
 
     # Store the score
     with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
