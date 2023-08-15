@@ -9,10 +9,10 @@ generic:
   #random_context: False
   #tag: False
   #output_dir: "./results/" # Modify here
-  batch_size: 1
+  batch_size: 4
   model_checkpoint : facebook/xglm-7.5B
   k : 4
   prompt_talk_id : 1548
   max_new_tokens : 64 #64 #should be more than 256 otherwise metrics function np.delete will not work 
   max_length : 512 # 512
-  cfg_name : xglm-fr-1-1-max64
+  cfg_name : xglm-fr-1-1

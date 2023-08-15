@@ -15,4 +15,4 @@ generic:
   prompt_talk_id : 1548
   max_new_tokens : 128 
   max_length : 512 # 512
-  cfg_name : 1-1
+  cfg_name : bsd-1-1

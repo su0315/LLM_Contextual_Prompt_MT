@@ -75,7 +75,7 @@ def compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, 
     result = {"bleu": bleu["score"]}
 
     # comet
-    print ("COMET", "decoded_input_ids:",  decoded_input_ids[:5], "\nCOMET: decoded_preds", decoded_preds[:5], "\nCOMET: decoded_labels", [item for decoded_label in decoded_labels for item in decoded_label][:5])
+    #print ("COMET", "decoded_input_ids:",  decoded_input_ids[:5], "\nCOMET: decoded_preds", decoded_preds[:5], "\nCOMET: decoded_labels", [item for decoded_label in decoded_labels for item in decoded_label][:5])
     
     comet = metric2.compute(predictions=decoded_preds, references=[item for decoded_label in decoded_labels for item in decoded_label], sources = decoded_input_ids)
     result["comet"] =  np.mean(comet["scores"])
