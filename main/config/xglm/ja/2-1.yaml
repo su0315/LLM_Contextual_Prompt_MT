@@ -11,7 +11,7 @@ generic:
   #output_dir: "./results/" # Modify here
   batch_size: 16
   model_checkpoint : facebook/xglm-7.5B
-  k : 3
+  k : 4
   prompt_talk_id : 1548
   max_new_tokens : 64 #64 #should be more than 256 otherwise metrics function np.delete will not work 
   max_length : 512 # 512
