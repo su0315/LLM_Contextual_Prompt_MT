@@ -3,8 +3,6 @@ import numpy as np
 import preprocess
 import json
 
-
-
 def postprocess_text(preds, labels, input_ids, model_checkpoint):
     preds = [pred.strip() for pred in preds]
     labels = [[label.strip()] for label in labels]
