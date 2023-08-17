@@ -84,7 +84,7 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
                 inputs.append(concat_input)
 
     else:
-        inputs = [prompt + ip + after_ip for doc in data["doc"][:] for sent in doc["en"]] 
+        inputs = ["Given context:\n\n" + prompt + ip + after_ip for doc in data["doc"][:] for sent in doc["en"]] 
 
         #if "xglm" in model_checkpoint:
             #doc_input = [_context + prompt + ip + ' = ' for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
