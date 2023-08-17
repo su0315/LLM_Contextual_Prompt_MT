@@ -41,10 +41,14 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
     elif "llama" in model_checkpoint:
         for doc in data:
             if doc["talk_id"] == prompt_talk_id:
+                print ("Prompt found in trainset")
                 for en_sent, tgt_lang_sent in zip(doc["doc"]["en"][13:13+k], doc["doc"][tgt_lang][13:13+k]):
                     k_shot =f"{en_sent} => {tgt_lang_sent}\n"
                     _prompt += k_shot
                 break
+            else:
+                print ("No prompt found")
+            
         _prompt = f"""Translate English to {target_language[tgt_lang]}:\n\n{_prompt}"""
             
     print("PROMPT", _prompt)
@@ -64,9 +68,7 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
     elif "llama" in model_checkpoint:
         after_ip = " => "
 
-    print ("Yes")
     if src_context_size >= 1:
-        print ("Yes2")
         for doc_idx, doc in enumerate(data["doc"]):
             doc_input = [sent for sent in doc["en"]] # 10 sentences from each document
 
@@ -84,22 +86,7 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
                 inputs.append(concat_input)
 
     else:
-        inputs = ["Given context:\n\n" + prompt + ip + after_ip for doc in data["doc"][:] for sent in doc["en"]] 
-
-        #if "xglm" in model_checkpoint:
-            #doc_input = [_context + prompt + ip + ' = ' for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
-
-        #elif "llama" in model_checkpoint:
-            #doc_input = [_context + prompt + ip + " => " for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]]
-
-    #print ("INPUTS", inputs)
-    
-    #if "xglm" in model_checkpoint:
-        #inputs = [prompt + sent + ' = ' for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
-
-    #elif "llama" in model_checkpoint:
-        #inputs = [f"""Translate English to {target_language[tgt_lang]}: \n\n {prompt} {sent} =>""" for doc in data["doc"][prompt_talk_index+1:] for sent in doc["en"]] ## [1:] to eliminate Few shot example
-    
+        inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] 
 
     targets = [sent for doc in data["doc"] for sent in doc[tgt_lang]]
     

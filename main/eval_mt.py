@@ -76,19 +76,15 @@ def main():
         model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint)    
     
     if "iwslt_hf" in data_path:
-        #data_files = { "test": f"{data_path}ted_en-{tgt_lang}"}
-        data_files = f"{data_path}ted_en-{tgt_lang}"
+        data_files = { "train": f"{data_path}train_ted_en-{tgt_lang}",  "test": f"{data_path}test_ted_en-{tgt_lang}"}
         dataset = load_dataset("json", data_files=data_files)
-        print ("Before split", dataset)
-        dataset = dataset["train"].train_test_split(test_size=0.1, shuffle=False)
-        print ("After split", dataset)
         print ("The num of sent in train set before preprocess", len([sent for doc in dataset["train"]["doc"] for sent in doc["en"]]))
         print ("The num of sent in test set before preprocess", len([sent for doc in dataset["test"]["doc"] for sent in doc["en"]]))
         prompt = generate_prompt(dataset["train"], tgt_lang, model_checkpoint, k, prompt_talk_id)
         inputs = preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
         #print (max([torch.where(ip==tokenizer.pad_token_id)[0][0].item() for ip in inputs])) # Checking the max number of tokens ### 270
         #print (max([len(ip) for ip in inputs])) 
-        print ("Number of sentences in testset", len(inputs)) # 8520
+        print ("Number of sentences in testset", len(inputs))
         labels = preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
         
         output_dir = f"./results/ted/en-{tgt_lang}/{cfg_name}/"
@@ -120,10 +116,9 @@ def main():
 
     model.to(device)    
     model.eval()
-    print ("Done3")
+ 
     # Generate and Evaluate
-    print ("Num of inputs in test", len(inputs))
-    print ("Num of labels in test", len(inputs))
+    
 
     num_batches = 0
     for batch in tqdm(range(0, len(inputs), batch_size), total = len(inputs)/batch_size, desc="Completed Batches"):
