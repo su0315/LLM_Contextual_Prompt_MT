@@ -1,10 +1,12 @@
-from data.xml_to_json import generate_parallel_json
+from data.xml_to_json import generate_parallel_df
 
 def main():
     parallel_lang_list = [["en", "ja"],["en", "ar"], ["en",  "fr"], ["en", "de"], ["en", "ko"], ["en", "zh"]]
     data_dir = "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/"
-    generate_parallel_json(parallel_lang_list, data_dir) # , prompt_talk_id
-
+    generate_parallel_df(parallel_lang_list, data_dir, "train")
+    generate_parallel_df(parallel_lang_list, data_dir, "test")
+    
+    
 if __name__ == "__main__":
     main()
     
