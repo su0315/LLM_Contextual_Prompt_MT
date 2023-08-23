@@ -16,7 +16,7 @@ def generate_context(src_context_size, prompt_talk_id, data):
                 if context_idx >= 0: 
                     _context += doc_input[context_idx] + "\n"
         
-            print ("CONTEXT", idx, _context, ip)
+            #print ("CONTEXT", idx, _context, ip)
     return _context
 
 
@@ -51,7 +51,7 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
             
         _prompt = f"""Translate English to {target_language[tgt_lang]}:\n\n{_prompt}"""
             
-    print("PROMPT", _prompt)
+    #print("PROMPT", _prompt)
     return _prompt
 
 
@@ -68,34 +68,43 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
     elif "llama" in model_checkpoint:
         after_ip = " => "
 
-    if src_context_size >= 1:
-        for doc_idx, doc in enumerate(data["doc"]):
-            doc_input = [sent for sent in doc["en"]] # 10 sentences from each document
+    #if "mbart" in model_checkpoint:
+        
 
-            for idx, ip in enumerate(doc_input):
-                _context = "Given context:\n\n"
-
-                # Check each context index given the context size and current input index
-                for context_window in range(src_context_size, 0, -1):
-                    context_idx = idx - context_window
-                    # If context idx is not the left side of the beggining of the doc_inputs
-                    if context_idx >= 0: 
-                        _context += doc_input[context_idx] + "\n"
-
-                concat_input = _context + "\n" + prompt + ip + after_ip
-                inputs.append(concat_input)
-
+        #model_inputs={}
     else:
-        inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] 
+        if src_context_size >= 1:
+            for doc_idx, doc in enumerate(data["doc"]):
+                doc_input = [sent for sent in doc["en"]] # 10 sentences from each document
 
-    targets = [sent for doc in data["doc"] for sent in doc[tgt_lang]]
+                for idx, ip in enumerate(doc_input):
+                    _context = "Given context:\n\n"
+
+                    # Check each context index given the context size and current input index
+                    for context_window in range(src_context_size, 0, -1):
+                        context_idx = idx - context_window
+                        # If context idx is not the left side of the beggining of the doc_inputs
+                        if context_idx >= 0: 
+                            _context += doc_input[context_idx] + "\n"
+
+                    concat_input = _context + "\n" + prompt + ip + after_ip
+                    inputs.append(concat_input)
+
+        else:
+            inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] 
+            targets = [sent for doc in data["doc"] for sent in doc[tgt_lang]]
+        model_inputs = tokenizer(
+        inputs, text_target=targets, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
+        
+
+    #targets = [sent for doc in data["doc"] for sent in doc[tgt_lang]]
     
     print ("INPUT EXAMPLE 0")
-    print (inputs[0])
+    #print (inputs[0])
     print ("INPUT EXAMPLE 1")
-    print (inputs[1])
-    model_inputs = tokenizer(
-        inputs, text_target=targets, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
+    #print (inputs[1])
+    #model_inputs = tokenizer(
+        #inputs, text_target=targets, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
     
     return model_inputs
 
