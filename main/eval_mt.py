@@ -138,15 +138,17 @@ def main():
 
     # Generate and Evaluate
     if "mbart" in model_checkpoint:
+        lang_to_code = {"ja": "ja_XX", "ar":"ar_AR", "de":"de_DE", "fr":"fr_XX","ko":"ko_KR", "zh": "zh_CN"}
         for batch in tqdm(range(0, len(inputs), batch_size), total = len(inputs)/batch_size, desc="Completed Batches"):
             print ("mbart")
             print ("Num of semts in test", len(inputs))
             num_batches += 1
             print ("batch", batch, "to", batch+batch_size)
             batch_ip = inputs[batch:batch+batch_size,:].to(device)
+            print ("INPUT", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
             #print ("INPUT1", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
             batch_label = labels[batch:batch+batch_size, :]
-            batch_output = model.generate(batch_ip, forced_bos_token_id=tokenizer.lang_code_to_id["ja_XX"], max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
+            batch_output = model.generate(batch_ip, forced_bos_token_id=tokenizer.lang_code_to_id[lang_to_code[tgt_lang]], max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
             #print ("OUTPUT1", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
             #print ("OUTPUT2", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
             print ("generate is done")

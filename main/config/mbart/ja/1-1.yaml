@@ -10,7 +10,7 @@ generic:
   #random_context: False
   #tag: False
   #output_dir: "./results/" # Modify here
-  batch_size: 16
+  batch_size: 64
   model_checkpoint : facebook/mbart-large-50-many-to-many-mmt
   k : 4
   prompt_talk_id : 1548
