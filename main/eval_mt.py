@@ -70,6 +70,83 @@ def initialize_model(model_checkpoint):
 
     return model, tokenizer
 
+def generate(model_checkpoint, inputs, labels, output_dir):
+    if "mbart" in model_checkpoint:
+        lang_to_code = {"ja": "ja_XX", "ar":"ar_AR", "de":"de_DE", "fr":"fr_XX","ko":"ko_KR", "zh": "zh_CN"}
+        
+    for batch in tqdm(range(0, len(inputs), batch_size), total = len(inputs)/batch_size, desc="Completed Batches"):
+        print ("mbart")
+        print ("Num of semts in test", len(inputs))
+        num_batches += 1
+        print ("batch", batch, "to", batch+batch_size)
+        batch_ip = inputs[batch:batch+batch_size,:].to(device)
+        print ("INPUT", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
+        #print ("INPUT1", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
+        batch_label = labels[batch:batch+batch_size]
+        batch_output = model.generate(batch_ip, forced_bos_token_id=tokenizer.lang_code_to_id[lang_to_code[tgt_lang]], max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
+        #print ("OUTPUT1", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
+        #print ("OUTPUT2", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
+        print ("generate is done")
+        outputs_list.append(batch_output)
+        
+        eval_preds = (batch_output.cpu(), batch_label, batch_ip.cpu())# To convert to numpy in evaluate function
+        result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
+        
+        with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
+            for decoded_pred, output in zip(decoded_preds, batch_output):
+                wf.write(decoded_pred.strip()+'\n')
+
+        with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
+            for decoded_label in (decoded_labels):
+                for item in decoded_label:
+                    wf.write(item.strip()+'\n')
+
+        with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
+            for decoded_input_id in (decoded_input_ids):
+                wf.write(decoded_input_id.strip()+'\n')
+    
+        bleu_sum += result["bleu"]
+        comet_sum += result["comet"]
+        gen_len_sum += result["gen_len"]
+
+
+    else: 
+        for batch in tqdm(range(0, len(inputs), batch_size), total = len(inputs)/batch_size, desc="Completed Batches"):
+            print ("Num of semts in test", len(inputs))
+            num_batches += 1
+            print ("batch", batch, "to", batch+batch_size)
+            batch_ip = inputs[batch:batch+batch_size, :].to(device)
+            print ("INPUT1", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
+            print (labels)
+            batch_label = np.asarray(labels[batch:batch+batch_size])
+            print (batch_label)
+            batch_output = model.generate(batch_ip, max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
+            print ("OUTPUT1", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
+            batch_output = batch_output[:, max_length:] # Remove the input before pred and </s> after pred 
+            #print ("OUTPUT2", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
+            print ("generate is done")
+            outputs_list.append(batch_output)
+            
+            eval_preds = (batch_output.cpu(), batch_label, batch_ip.cpu())# To convert to numpy in evaluate function
+            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
+            
+            with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
+                for decoded_pred, output in zip(decoded_preds, batch_output):
+                    wf.write(decoded_pred.strip()+'\n')
+
+            with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
+                for decoded_label in (decoded_labels):
+                    for item in decoded_label:
+                        wf.write(item.strip()+'\n')
+
+            with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
+                for decoded_input_id in (decoded_input_ids):
+                    wf.write(decoded_input_id.strip()+'\n')
+        
+            bleu_sum += result["bleu"]
+            comet_sum += result["comet"]
+            gen_len_sum += result["gen_len"]
+
 
 def main():
     parser = read_arguments()
@@ -120,22 +197,6 @@ def main():
         print ("The num of sent in train set before preprocess", len([sent for doc in dataset["train"]["doc"] for sent in doc["en"]]))
         print ("The num of sent in test set before preprocess", len([sent for doc in dataset["test"]["doc"] for sent in doc["en"]]))
         prompt = generate_prompt(dataset["train"], tgt_lang, model_checkpoint, k, prompt_talk_id)
-        """
-        if "mbart" in model_checkpoint:
-            inputs = [sent for doc in dataset["test"]["doc"] for sent in doc["en"]]
-            targets = [sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]]
-            tokenizer.src_lang = "en_XX"
-            inputs = tokenizer(inputs, truncation=True,  max_length=512, padding = "max_length", return_tensors="pt").input_ids
-            #print (tokenizer.batch_decode(inputs, skip_special_tokens=True))
-            tokenizer.src_lang = f"{tgt_lang}_XX"
-            labels = tokenizer(targets, truncation=True,  max_length=512, padding = "max_length", return_tensors="pt").input_ids
-        else:
-            inputs = preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
-            #print (max([torch.where(ip==tokenizer.pad_token_id)[0][0].item() for ip in inputs])) # Checking the max number of tokens ### 270
-            #print (max([len(ip) for ip in inputs])) 
-            print ("Number of sentences in testset", len(inputs))
-            labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
-        """
         inputs = preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
         labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
         output_dir = f"./results/ted/en-{tgt_lang}/{cfg_name}/"
@@ -170,80 +231,7 @@ def main():
     num_batches = 0
 
     # Generate and Evaluate
-    if "mbart" in model_checkpoint:
-        lang_to_code = {"ja": "ja_XX", "ar":"ar_AR", "de":"de_DE", "fr":"fr_XX","ko":"ko_KR", "zh": "zh_CN"}
-        for batch in tqdm(range(0, len(inputs), batch_size), total = len(inputs)/batch_size, desc="Completed Batches"):
-            print ("mbart")
-            print ("Num of semts in test", len(inputs))
-            num_batches += 1
-            print ("batch", batch, "to", batch+batch_size)
-            batch_ip = inputs[batch:batch+batch_size,:].to(device)
-            print ("INPUT", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
-            #print ("INPUT1", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
-            batch_label = labels[batch:batch+batch_size, :]
-            batch_output = model.generate(batch_ip, forced_bos_token_id=tokenizer.lang_code_to_id[lang_to_code[tgt_lang]], max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
-            #print ("OUTPUT1", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
-            #print ("OUTPUT2", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
-            print ("generate is done")
-            outputs_list.append(batch_output)
-            
-            eval_preds = (batch_output.cpu(), batch_label.cpu(), batch_ip.cpu())# To convert to numpy in evaluate function
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
-            
-            with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
-                for decoded_pred, output in zip(decoded_preds, batch_output):
-                    wf.write(decoded_pred.strip()+'\n')
-
-            with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
-                for decoded_label in (decoded_labels):
-                    for item in decoded_label:
-                        wf.write(item.strip()+'\n')
-
-            with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
-                for decoded_input_id in (decoded_input_ids):
-                    wf.write(decoded_input_id.strip()+'\n')
-        
-            bleu_sum += result["bleu"]
-            comet_sum += result["comet"]
-            gen_len_sum += result["gen_len"]
-
-
-    else: 
-        for batch in tqdm(range(0, len(inputs), batch_size), total = len(inputs)/batch_size, desc="Completed Batches"):
-            print ("Num of semts in test", len(inputs))
-            num_batches += 1
-            print ("batch", batch, "to", batch+batch_size)
-            batch_ip = inputs[batch:batch+batch_size, :].to(device)
-            print ("INPUT1", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
-            print (labels)
-            batch_label = np.asarray(labels[batch:batch+batch_size])
-            print (batch_label)
-            batch_output = model.generate(batch_ip, max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
-            print ("OUTPUT1", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
-            batch_output = batch_output[:, max_length:] # Remove the input before pred and </s> after pred 
-            #print ("OUTPUT2", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
-            print ("generate is done")
-            outputs_list.append(batch_output)
-            
-            eval_preds = (batch_output.cpu(), batch_label, batch_ip.cpu())# To convert to numpy in evaluate function
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
-            
-            with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
-                for decoded_pred, output in zip(decoded_preds, batch_output):
-                    wf.write(decoded_pred.strip()+'\n')
-
-            with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
-                for decoded_label in (decoded_labels):
-                    for item in decoded_label:
-                        wf.write(item.strip()+'\n')
-
-            with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
-                for decoded_input_id in (decoded_input_ids):
-                    wf.write(decoded_input_id.strip()+'\n')
-        
-            bleu_sum += result["bleu"]
-            comet_sum += result["comet"]
-            gen_len_sum += result["gen_len"]
+    
 
     # Store the score
     with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:

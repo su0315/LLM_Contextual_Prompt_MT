@@ -82,7 +82,7 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
 
     else:
         if "mbart" in model_checkpoint:
-            inputs = [sent for doc in dataset["test"]["doc"] for sent in doc["en"]]
+            inputs = [sent for doc in data["doc"] for sent in doc["en"]]
             tokenizer.src_lang = "en_XX"
         #inputs = tokenizer(inputs, truncation=True,  max_length=512, padding = "max_length", return_tensors="pt").input_ids
         #print (tokenizer.batch_decode(inputs, skip_special_tokens=True))
