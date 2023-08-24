@@ -44,6 +44,33 @@ def read_arguments() -> ArgumentParser:
     
     return parser
 
+
+def initialize_model(model_checkpoint):
+    if "llama" in model_checkpoint:
+        from transformers import  LlamaTokenizer, LlamaForCausalLM
+        
+        tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
+        tokenizer.add_special_tokens({"pad_token":"<pad>"})
+        model = LlamaForCausalLM.from_pretrained(model_checkpoint, use_auth_token=True)
+        model.resize_token_embeddings(len(tokenizer))
+        model.config.pad_token_id = tokenizer.pad_token_id
+
+    elif "xglm" in model_checkpoint:
+        tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
+        configuration = XGLMConfig()
+        model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint) 
+
+    elif "mbart" in model_checkpoint:
+        print ("mbart model")
+        from transformers import MBartConfig, MBart50Tokenizer, MBartForConditionalGeneration, MBart50TokenizerFast
+        #configuration = MBartConfig()
+        tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint)
+        tokenizer.src_lang="en_XX"
+        model = MBartForConditionalGeneration.from_pretrained(model_checkpoint)
+
+    return model, tokenizer
+
+
 def main():
     parser = read_arguments()
     cfg = parser.parse_args()
@@ -60,6 +87,7 @@ def main():
     cfg_name = cfg.generic.cfg_name
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    """
     if "llama" in model_checkpoint:
         from transformers import  LlamaTokenizer, LlamaForCausalLM
         
@@ -82,7 +110,9 @@ def main():
         tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint)
         tokenizer.src_lang="en_XX"
         model = MBartForConditionalGeneration.from_pretrained(model_checkpoint)
+    """
 
+    model, tokenizer = initialize_model(model_checkpoint)
     
     if "iwslt_hf" in data_path:
         data_files = { "train": f"{data_path}train_ted_en-{tgt_lang}",  "test": f"{data_path}test_ted_en-{tgt_lang}"}
@@ -90,6 +120,7 @@ def main():
         print ("The num of sent in train set before preprocess", len([sent for doc in dataset["train"]["doc"] for sent in doc["en"]]))
         print ("The num of sent in test set before preprocess", len([sent for doc in dataset["test"]["doc"] for sent in doc["en"]]))
         prompt = generate_prompt(dataset["train"], tgt_lang, model_checkpoint, k, prompt_talk_id)
+        """
         if "mbart" in model_checkpoint:
             inputs = [sent for doc in dataset["test"]["doc"] for sent in doc["en"]]
             targets = [sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]]
@@ -103,8 +134,10 @@ def main():
             #print (max([torch.where(ip==tokenizer.pad_token_id)[0][0].item() for ip in inputs])) # Checking the max number of tokens ### 270
             #print (max([len(ip) for ip in inputs])) 
             print ("Number of sentences in testset", len(inputs))
-            labels = preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).labels
-            
+            labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
+        """
+        inputs = preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
+        labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
         output_dir = f"./results/ted/en-{tgt_lang}/{cfg_name}/"
 
     elif "BSD-master" in data_path:
@@ -182,7 +215,9 @@ def main():
             print ("batch", batch, "to", batch+batch_size)
             batch_ip = inputs[batch:batch+batch_size, :].to(device)
             print ("INPUT1", tokenizer.batch_decode(batch_ip, skip_special_tokens=True))
-            batch_label = labels[batch:batch+batch_size, :]
+            print (labels)
+            batch_label = np.asarray(labels[batch:batch+batch_size])
+            print (batch_label)
             batch_output = model.generate(batch_ip, max_new_tokens=max_new_tokens, do_sample=False) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
             print ("OUTPUT1", tokenizer.batch_decode(batch_output, skip_special_tokens=True))
             batch_output = batch_output[:, max_length:] # Remove the input before pred and </s> after pred 
@@ -190,7 +225,7 @@ def main():
             print ("generate is done")
             outputs_list.append(batch_output)
             
-            eval_preds = (batch_output.cpu(), batch_label.cpu(), batch_ip.cpu())# To convert to numpy in evaluate function
+            eval_preds = (batch_output.cpu(), batch_label, batch_ip.cpu())# To convert to numpy in evaluate function
             result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
             
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:

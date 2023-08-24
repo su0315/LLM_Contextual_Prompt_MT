@@ -16,7 +16,7 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint):
 
 
 def compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds):
-    preds, labels, input_ids = eval_preds
+    preds, decoded_labels, input_ids = eval_preds
     
     sep = tokenizer.sep_token_id
     split_id = tokenizer.encode("=")[-1]
@@ -33,15 +33,15 @@ def compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, 
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
     #print ("splited preds: ", decoded_preds[:5])
     #print ()
-    
+    []
     
     # Labels
-    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+    decoded_labels = np.where(decoded_labels != -100, decoded_labels, tokenizer.pad_token_id)
     #print ("labels from eval_preds", [tokenizer.decode(i, skip_special_tokens=True) for i in labels])
     #print ()
     #labels= [ np.array_split(item, np.where(item == sep)[-1])[-1]  for item in labels ]
     #print ("checking labels_token:")
-    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    #decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
     #print ("splitted labels: ", decoded_labels[:5])
     
     # Input_ids
@@ -56,7 +56,6 @@ def compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, 
     #print ("splited input_ids", decoded_input_ids[:5])
     #print ()
     
-
     decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint)
     
     metric1 = evaluate.load("sacrebleu")

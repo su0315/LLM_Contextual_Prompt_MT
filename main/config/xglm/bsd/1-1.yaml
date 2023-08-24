@@ -2,7 +2,7 @@ generic:
   data_path: /home/sumire/discourse_context_mt/data/BSD-master/test.json
   #src_lang: en
   tgt_lang: ja
-  #src_context: 0
+  src_context: 0
   #tgt_context: 0
   #dropout: 0.0
   #speaker: False

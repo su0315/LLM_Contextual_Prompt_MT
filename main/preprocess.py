@@ -20,8 +20,6 @@ def generate_context(src_context_size, prompt_talk_id, data):
     return _context
 
 
-
-
 def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
 
     target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
@@ -56,11 +54,8 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
 
 
 def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
-    
-    # Identify prompt talk and eliminate it from the inputs
-    #prompt_talk_index = data["talk_id"].index(prompt_talk_id)
+
     inputs = []
-    
 
     if "xglm" in model_checkpoint:
         after_ip = " = "
@@ -68,43 +63,46 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
     elif "llama" in model_checkpoint:
         after_ip = " => "
 
-    #if "mbart" in model_checkpoint:
-        
+    if src_context_size >= 1:
+        for doc_idx, doc in enumerate(data["doc"]):
+            doc_input = [sent for sent in doc["en"]] # 10 sentences from each document
+
+            for idx, ip in enumerate(doc_input):
+                _context = "Given context:\n\n"
+
+                # Check each context index given the context size and current input index
+                for context_window in range(src_context_size, 0, -1):
+                    context_idx = idx - context_window
+                    # If context idx is not the left side of the beggining of the doc_inputs
+                    if context_idx >= 0: 
+                        _context += doc_input[context_idx] + "\n"
+
+                concat_input = _context + "\n" + prompt + ip + after_ip
+                inputs.append(concat_input)
+
+    else:
+        if "mbart" in model_checkpoint:
+            inputs = [sent for doc in dataset["test"]["doc"] for sent in doc["en"]]
+            tokenizer.src_lang = "en_XX"
+        #inputs = tokenizer(inputs, truncation=True,  max_length=512, padding = "max_length", return_tensors="pt").input_ids
+        #print (tokenizer.batch_decode(inputs, skip_special_tokens=True))
+        #tokenizer.src_lang = f"{tgt_lang}_XX"
+        #labels = tokenizer(targets, truncation=True,  max_length=512, padding = "max_length", return_tensors="pt").input_ids
 
         #model_inputs={}
-    else:
-        if src_context_size >= 1:
-            for doc_idx, doc in enumerate(data["doc"]):
-                doc_input = [sent for sent in doc["en"]] # 10 sentences from each document
-
-                for idx, ip in enumerate(doc_input):
-                    _context = "Given context:\n\n"
-
-                    # Check each context index given the context size and current input index
-                    for context_window in range(src_context_size, 0, -1):
-                        context_idx = idx - context_window
-                        # If context idx is not the left side of the beggining of the doc_inputs
-                        if context_idx >= 0: 
-                            _context += doc_input[context_idx] + "\n"
-
-                    concat_input = _context + "\n" + prompt + ip + after_ip
-                    inputs.append(concat_input)
-
-        else:
+        else: 
             inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] 
-            targets = [sent for doc in data["doc"] for sent in doc[tgt_lang]]
-        model_inputs = tokenizer(
-        inputs, text_target=targets, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
-        
+    
+    model_inputs = tokenizer(
+        inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
+    print (type(model_inputs))
 
     #targets = [sent for doc in data["doc"] for sent in doc[tgt_lang]]
     
     print ("INPUT EXAMPLE 0")
-    #print (inputs[0])
+    print (inputs[0])
     print ("INPUT EXAMPLE 1")
-    #print (inputs[1])
-    #model_inputs = tokenizer(
-        #inputs, text_target=targets, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
+    print (inputs[1])
     
     return model_inputs
 
