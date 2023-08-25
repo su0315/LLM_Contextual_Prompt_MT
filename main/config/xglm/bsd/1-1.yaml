@@ -1,5 +1,5 @@
 generic:
-  data_path: /home/sumire/discourse_context_mt/data/BSD-master/test.json
+  data_path: /home/sumire/discourse_context_mt/data/BSD-master/
   #src_lang: en
   tgt_lang: ja
   src_context: 0
@@ -11,8 +11,8 @@ generic:
   #output_dir: "./results/" # Modify here
   batch_size: 8
   model_checkpoint : facebook/xglm-7.5B
-  k : 12
+  k : 4
   prompt_talk_id : 1548
-  max_new_tokens : 128 
+  max_new_tokens : 64
   max_length : 512 # 512
   cfg_name : bsd-1-1

@@ -26,7 +26,6 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
 
     #K-shot Prompt
     _prompt = ""
-
     
     if "xglm" in model_checkpoint:
         for doc in data:
@@ -49,7 +48,6 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
             
         _prompt = f"""Translate English to {target_language[tgt_lang]}:\n\n{_prompt}"""
             
-    #print("PROMPT", _prompt)
     return _prompt
 
 
@@ -84,20 +82,12 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
         if "mbart" in model_checkpoint:
             inputs = [sent for doc in data["doc"] for sent in doc["en"]]
             tokenizer.src_lang = "en_XX"
-        #inputs = tokenizer(inputs, truncation=True,  max_length=512, padding = "max_length", return_tensors="pt").input_ids
-        #print (tokenizer.batch_decode(inputs, skip_special_tokens=True))
-        #tokenizer.src_lang = f"{tgt_lang}_XX"
-        #labels = tokenizer(targets, truncation=True,  max_length=512, padding = "max_length", return_tensors="pt").input_ids
 
-        #model_inputs={}
         else: 
             inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] 
     
     model_inputs = tokenizer(
         inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
-    print (type(model_inputs))
-
-    #targets = [sent for doc in data["doc"] for sent in doc[tgt_lang]]
     
     print ("INPUT EXAMPLE 0")
     print (inputs[0])
@@ -121,9 +111,8 @@ def generate_prompt_bsd(data, tgt_lang, k):
 
 
 def preprocess_function_bsd(tgt_lang, prompt, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
-    inputs =  [prompt + sent['en_sentence'] + ' = ' for doc in data["conversation"][1:5] for sent in doc] 
-    targets = [sent['ja_sentence'] for doc in data["conversation"][1:5] for sent in doc] 
+    inputs =  [prompt + sent['en_sentence'] + ' = ' for doc in data["conversation"] for sent in doc] 
     model_inputs = tokenizer(
-         inputs, text_target=targets, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True)
+         inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True)
     
     return model_inputs
