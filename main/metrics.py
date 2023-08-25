@@ -11,7 +11,7 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint):
     # Llama post process
     if "llama" in model_checkpoint:
         preds = [pred.split("\n")[0] for pred in preds] # Extract only the first prediction 
-        input_ids = [input_id.split("\n")[-1][2:-2] for input_id in input_ids] # Extract the input from examples + input [:-2] works for removing "=>" ?
+        input_ids = [input_id.split("\n")[-1][:-2] for input_id in input_ids] # Extract the input from examples + input [:-2] works for removing "=>" ?
 
     return preds, labels, input_ids
 

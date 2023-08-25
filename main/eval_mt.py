@@ -144,6 +144,8 @@ def evaluate_mt(
             batch_output = model.generate(
                 batch_ip, max_new_tokens=max_new_tokens, do_sample=False
                 ) # if max_length only doesn't work, need to put max_new_tokens for XGLM model
+        batch_output = batch_output[:, max_length:]
+        
         print ("generate is done")
         
         # Evaluate
