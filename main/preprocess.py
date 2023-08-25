@@ -84,8 +84,8 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
             tokenizer.src_lang = "en_XX"
 
         else: 
-            inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] 
-    
+            #inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
+            inputs = [prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When without context prompt 
     model_inputs = tokenizer(
         inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
     
