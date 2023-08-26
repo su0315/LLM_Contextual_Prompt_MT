@@ -1,4 +1,3 @@
-
 generic:
   data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
   #src_lang: en
@@ -11,9 +10,9 @@ generic:
   #tag: False
   #output_dir: "./results/" # Modify here
   batch_size: 4
-  model_checkpoint : /mnt/data-poseidon/sumire/hf_llama
+  model_checkpoint : facebook/xglm-7.5B
   k : 4
   prompt_talk_id : 1548
-  max_new_tokens : 64 #128 
-  max_length : 512 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
-  cfg_name : llama-zh-1-1-sacre
+  max_new_tokens : 64 #64 #should be more than 256 otherwise metrics function np.delete will not work 
+  max_length : 512 # 512
+  cfg_name : xglm-zh-1-1
