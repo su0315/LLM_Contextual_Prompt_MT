@@ -217,7 +217,7 @@ def main():
 
     # Store Hyperparameter in text file
     with open(output_dir+'/config','w', encoding='utf8') as wf:
-        for i in [ tgt_lang, data_path, model_checkpoint, batch_size, k,prompt_talk_id, max_new_tokens, max_length, cfg_name]:
+        for i in [ tgt_lang, data_path, f"src_context: {src_context}",  model_checkpoint, batch_size, k,prompt_talk_id, max_new_tokens, max_length, cfg_name]:
             wf.write(f"{i}\n")
 
     # Generate and Evaluate
