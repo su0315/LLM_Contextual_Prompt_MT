@@ -54,6 +54,8 @@ def compute_metrics(dataset, model_checkpoint, output_dir, tgt_lang, tokenizer, 
         bleu = metric1.compute(predictions=decoded_preds, references=decoded_labels, tokenize='ko-mecab')
     elif tgt_lang == "zh":
         bleu = metric1.compute(predictions=decoded_preds, references=decoded_labels, tokenize='zh')
+    elif tgt_lang == "ar":
+        bleu = metric1.compute(predictions=decoded_preds, references=decoded_labels, tokenize='flores101')
     else: 
         bleu = metric1.compute(predictions=decoded_preds, references=decoded_labels)
     result = {"bleu": bleu["score"]}
