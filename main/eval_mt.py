@@ -8,7 +8,7 @@ import os
 from transformers import DataCollatorForLanguageModeling
 from functools import partial
 import json
-from main.preprocess import preprocess_function, generate_prompt, preprocess_function_bsd, generate_prompt_bsd, generate_context
+from main.preprocess import preprocess_function, generate_prompt, preprocess_function_bsd, generate_prompt_bsd
 from main.metrics import compute_metrics
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
@@ -51,6 +51,7 @@ def initialize_model(model_checkpoint):
         
         tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
         tokenizer.add_special_tokens({"pad_token":"<pad>"})
+        tokenizer.add_special_tokens({"pad_token":"</s>"}) # To replace "/n"
         model = LlamaForCausalLM.from_pretrained(model_checkpoint, use_auth_token=True)
         model.resize_token_embeddings(len(tokenizer))
         model.config.pad_token_id = tokenizer.pad_token_id

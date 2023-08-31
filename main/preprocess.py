@@ -1,4 +1,5 @@
 
+"""
 def generate_context(src_context_size, prompt_talk_id, data):
     
     # Identify prompt talk and eliminate it from the inputs
@@ -18,7 +19,7 @@ def generate_context(src_context_size, prompt_talk_id, data):
         
             #print ("CONTEXT", idx, _context, ip)
     return _context
-
+"""
 
 def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
 
@@ -35,18 +36,19 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
                     _prompt += k_shot
                 break
 
-    elif "llama" in model_checkpoint:
+    elif "llama" in model_checkpoint: ## TRYING </s> instead of \n
         for doc in data:
             if doc["talk_id"] == prompt_talk_id:
                 print ("Prompt found in trainset")
                 for en_sent, tgt_lang_sent in zip(doc["doc"]["en"][13:13+k], doc["doc"][tgt_lang][13:13+k]):
-                    k_shot =f"{en_sent} => {tgt_lang_sent}\n"
+                    k_shot =f"{en_sent} => {tgt_lang_sent}</s>"
                     _prompt += k_shot
                 break
             else:
                 print ("No prompt found")
-            
-        _prompt = f"""Translate English to {target_language[tgt_lang]}:\n\n{_prompt}"""
+    
+    
+        _prompt = f"""Translate English to {target_language[tgt_lang]}:</s></s>{_prompt}"""
             
     return _prompt
 
@@ -65,17 +67,17 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
         for doc_idx, doc in enumerate(data["doc"]):
             doc_input = [sent for sent in doc["en"]] # 10 sentences from each document
 
-            for idx, ip in enumerate(doc_input):
-                _context = "Given context:\n\n"
+            for idx, ip in enumerate(doc_input): ## TRYING </s> instead of \n
+                _context = "Given context:</s></s>" ## TRYING </s> instead of \n
 
                 # Check each context index given the context size and current input index
                 for context_window in range(src_context_size, 0, -1):
                     context_idx = idx - context_window
                     # If context idx is not the left side of the beggining of the doc_inputs
                     if context_idx >= 0: 
-                        _context += doc_input[context_idx] + "\n"
+                        _context += doc_input[context_idx] + "</s>" ## TRYING </s> instead of \n
 
-                concat_input = _context + "\n" + prompt + ip + after_ip
+                concat_input = _context + "</s>" + prompt + ip + after_ip ## TRYING </s> instead of \n
                 inputs.append(concat_input)
 
     else:
@@ -84,8 +86,8 @@ def preprocess_function(src_context_size, tgt_lang, model_checkpoint, prompt, pr
             tokenizer.src_lang = "en_XX"
 
         else: 
-            inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
-            #inputs = [prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When without context prompt 
+            inputs = ["Given context:</s></s>" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
+            #inputs = [prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
     model_inputs = tokenizer(
         inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
     
