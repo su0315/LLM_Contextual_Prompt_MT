@@ -197,3 +197,6 @@ data/iwslt_hf/old_generated_data/ted_en-fr
 data/iwslt_hf/old_generated_data/ted_en-ja
 data/iwslt_hf/old_generated_data/ted_en-ko
 data/iwslt_hf/old_generated_data/ted_en-zh
+
+main/tokenizer.py
+notebook/api.ipynb
