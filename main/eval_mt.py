@@ -223,15 +223,21 @@ def evaluate_mt(
             comet_sum += result["comet"]
             gen_len_sum += result["gen_len"]
 
-    # Store the score
-    with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
-        bleu = bleu_sum / num_batches
-        comet = comet_sum / num_batches
-        gen_len = gen_len_sum/ num_batches
+            # Store the score
+            with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
+                if batch == 0:
+                    bleu = bleu_sum 
+                    comet = comet_sum
+                    gen_len = gen_len_sum
+                
+                else: 
+                    bleu = bleu_sum / batch
+                    comet = comet_sum / batch
+                    gen_len = gen_len_sum/ batch
 
-        wf.write(f"bleu: {bleu}\n") #ensure_ascii=False
-        wf.write(f"comet: {comet}\n") 
-        wf.write(f"gen_len: {gen_len}\n") 
+                wf.write(f"bleu: {bleu}\n") #ensure_ascii=False
+                wf.write(f"comet: {comet}\n") 
+                wf.write(f"gen_len: {gen_len}\n") 
 
 def main():
     parser = read_arguments()
@@ -272,7 +278,19 @@ def main():
 
     # Store Hyperparameter in text file
     with open(output_dir+'/config','w', encoding='utf8') as wf:
-        for i in [ tgt_lang, data_path, f"src_context_size: {src_context_size}",  model_checkpoint, batch_size, k,prompt_talk_id, max_new_tokens, max_length, cfg_name]:
+        for i in [
+            f"tgt_lang: {tgt_lang}", 
+            f"data_path{data_path}", 
+            f"src_context_size: {src_context_size}",  
+            f"api: {api}",
+            f"model_checkpoint: {model_checkpoint}", 
+            f"batch_size: {batch_size}", 
+            f"k: {k}",
+            f"prompt_talk_id: {prompt_talk_id}", 
+            f"max_new_tokens: {max_new_tokens}", 
+            f"max_length: {max_length}", 
+            f"cfg_name: {cfg_name}"
+            ]:
             wf.write(f"{i}\n")
 
     # Generate and Evaluate
