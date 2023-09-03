@@ -152,8 +152,9 @@ def evaluate_mt(
     lang_to_code = {"ja": "ja_XX", "ar":"ar_AR", "de":"de_DE", "fr":"fr_XX","ko":"ko_KR", "zh": "zh_CN"}
 
     if api is True: # No batch, directly input string to the model
-        
+        num_batch = 0
         for inp, label, src in zip(inputs, labels, sources): 
+            num_batch += 1
             print ("INP", inp)
             print ("LABEL", label)
             pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
@@ -177,6 +178,16 @@ def evaluate_mt(
             bleu_sum += result["bleu"]
             comet_sum += result["comet"]
             gen_len_sum += result["gen_len"]
+
+            with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
+                
+                bleu = bleu_sum / num_batch
+                comet = comet_sum / num_batch
+                gen_len = gen_len_sum/ num_batch
+
+                wf.write(f"bleu: {bleu}\n") #ensure_ascii=False
+                wf.write(f"comet: {comet}\n") 
+                wf.write(f"gen_len: {gen_len}\n") 
 
 
     else: 
