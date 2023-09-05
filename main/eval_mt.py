@@ -236,15 +236,9 @@ def evaluate_mt(
 
             # Store the score
             with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
-                if batch == 0:
-                    bleu = bleu_sum 
-                    comet = comet_sum
-                    gen_len = gen_len_sum
-                
-                else: 
-                    bleu = bleu_sum / batch
-                    comet = comet_sum / batch
-                    gen_len = gen_len_sum/ batch
+                bleu = bleu_sum / batch
+                comet = comet_sum / batch
+                gen_len = gen_len_sum / batch
 
                 wf.write(f"bleu: {bleu}\n") #ensure_ascii=False
                 wf.write(f"comet: {comet}\n") 
