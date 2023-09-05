@@ -14,7 +14,7 @@ def generate_prompt(data, tgt_lang, model_checkpoint, k, prompt_talk_id):
     elif "llama" or "Llama" in model_checkpoint:
         after_ip = " => "
         sep_token = "\n"
-        _prompt = f"""Translate English to {target_language[tgt_lang]}:{sep_token}{sep_token}"""
+        _prompt = f"""Translate English to {target_language[tgt_lang]}:{sep_token}"""
 
     random.seed(10)
     # Random prompt doc id
@@ -73,7 +73,7 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, promp
             doc_input = [sent for sent in doc["en"]] # 10 sentences from each document
 
             for idx, ip in enumerate(doc_input):
-                _context = "Given context:\n\n" 
+                _context = f"Given context:{sep_token}" 
 
                 # Check each context index given the context size and current input index
                 for context_window in range(src_context_size, 0, -1):
@@ -91,7 +91,7 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, promp
             tokenizer.src_lang = "en_XX"
 
         else:
-            inputs = ["Given context:\n\n" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
+            inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
             #inputs = [prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
     
     if api is True:

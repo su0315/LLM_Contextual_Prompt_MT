@@ -1,5 +1,4 @@
 from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, XGLMConfig, LlamaTokenizer, LlamaForCausalLM
-from text_generation import Client
 from datasets import load_dataset, concatenate_datasets, load_from_disk
 import evaluate
 import numpy as np
@@ -58,6 +57,8 @@ def initialize_model(model_checkpoint, api):
         model.config.pad_token_id = tokenizer.pad_token_id
 
     elif api is True:
+        from text_generation import Client
+
         TGI_CENTRAL_ADDRESS="localhost:8765"
         models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
         
@@ -147,14 +148,15 @@ def evaluate_mt(
     bleu_sum = 0
     comet_sum = 0
     gen_len_sum = 0
+    num_batches = 0
 
     # Define mBART language code 
     lang_to_code = {"ja": "ja_XX", "ar":"ar_AR", "de":"de_DE", "fr":"fr_XX","ko":"ko_KR", "zh": "zh_CN"}
 
     if api is True: # No batch, directly input string to the model
-        num_batch = 0
+
         for inp, label, src in zip(inputs, labels, sources): 
-            num_batch += 1
+            num_batches += 1
             print ("INP", inp)
             print ("LABEL", label)
             pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
@@ -181,9 +183,9 @@ def evaluate_mt(
 
             with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
                 
-                bleu = bleu_sum / num_batch
-                comet = comet_sum / num_batch
-                gen_len = gen_len_sum/ num_batch
+                bleu = bleu_sum / num_batches
+                comet = comet_sum / num_batches
+                gen_len = gen_len_sum/ num_batches
 
                 wf.write(f"bleu: {bleu}\n") #ensure_ascii=False
                 wf.write(f"comet: {comet}\n") 
@@ -236,9 +238,9 @@ def evaluate_mt(
 
             # Store the score
             with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
-                bleu = bleu_sum / batch
-                comet = comet_sum / batch
-                gen_len = gen_len_sum / batch
+                bleu = bleu_sum / num_batches
+                comet = comet_sum / num_batches
+                gen_len = gen_len_sum / num_batches
 
                 wf.write(f"bleu: {bleu}\n") #ensure_ascii=False
                 wf.write(f"comet: {comet}\n") 
