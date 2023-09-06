@@ -125,7 +125,7 @@ def read_data(
         labels = np.asarray([sent['ja_sentence'] for doc in dataset["test"]["conversation"] for sent in doc])
         output_dir = f"./results/BSD/en-{tgt_lang}/{cfg_name}/"
 
-    return dataset, sources, inputs, labels, output_dir
+    return dataset, prompt, sources, inputs, labels, output_dir
 
 def evaluate_mt(
     api,
@@ -176,6 +176,10 @@ def evaluate_mt(
             with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
                 for decoded_input_id in (decoded_input_ids):
                     wf.write(decoded_input_id.strip()+'\n')
+
+            with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
+                wf.write(inp.strip()+'\n')
+        
         
             bleu_sum += result["bleu"]
             comet_sum += result["comet"]
@@ -231,6 +235,10 @@ def evaluate_mt(
             with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
                 for decoded_input_id in (decoded_input_ids):
                     wf.write(decoded_input_id.strip()+'\n')
+
+            with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
+                for decoded_prompt in (tokenizer(batch_ip)):
+                    wf.write(decoded_prompt.strip()+'\n')
         
             bleu_sum += result["bleu"]
             comet_sum += result["comet"]
@@ -267,7 +275,7 @@ def main():
     model, tokenizer = initialize_model(model_checkpoint, api)
 
     # Load Dataset
-    dataset, sources, inputs, labels, output_dir  = read_data(
+    dataset, prompt, sources, inputs, labels, output_dir  = read_data(
         data_path, 
         tgt_lang, 
         api,
@@ -296,7 +304,8 @@ def main():
             f"prompt_talk_id: {prompt_talk_id}", 
             f"max_new_tokens: {max_new_tokens}", 
             f"max_length: {max_length}", 
-            f"cfg_name: {cfg_name}"
+            f"cfg_name: {cfg_name}",
+            f"prompt+source:\n {prompt}",
             ]:
             wf.write(f"{i}\n")
 
