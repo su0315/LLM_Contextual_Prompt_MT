@@ -91,8 +91,8 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, promp
             tokenizer.src_lang = "en_XX"
 
         else:
-            inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
-            #inputs = [prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
+            #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
+            inputs = [prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
     
     if api is True:
         model_inputs = inputs
