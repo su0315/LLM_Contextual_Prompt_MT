@@ -165,17 +165,13 @@ def evaluate_mt(
 
             # Write results to text file
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
-                for decoded_pred in decoded_preds:
-                    wf.write(decoded_pred.strip()+'\n')
+                wf.write(pred.strip()+'\n')
 
             with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
-                for decoded_label in (decoded_labels):
-                    for item in decoded_label:
-                        wf.write(item.strip()+'\n')
+                wf.write(label.strip()+'\n')
 
             with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
-                for decoded_input_id in (decoded_input_ids):
-                    wf.write(decoded_input_id.strip()+'\n')
+                wf.write(src.strip()+'\n')
 
             with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
                 wf.write(inp.strip()+'\n')
@@ -237,7 +233,7 @@ def evaluate_mt(
                     wf.write(decoded_input_id.strip()+'\n')
 
             with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
-                for decoded_prompt in (tokenizer(batch_ip)):
+                for decoded_prompt in (tokenizer.batch_decode(batch_ip)):
                     wf.write(decoded_prompt.strip()+'\n')
         
             bleu_sum += result["bleu"]
