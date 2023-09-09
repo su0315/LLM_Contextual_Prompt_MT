@@ -162,10 +162,11 @@ def evaluate_mt(
             pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
             eval_preds = (np.asarray([pred]), np.asarray([label]), np.asarray([src]))
             result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
-
+            print (decoded_preds)
             # Write results to text file
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
-                wf.write(pred.strip()+'\n')
+                for pred in decoded_preds:
+                    wf.write(pred.strip()+'\n')
 
             with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
                 wf.write(label.strip()+'\n')

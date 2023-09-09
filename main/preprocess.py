@@ -82,7 +82,7 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, promp
                     if context_idx >= 0: 
                         _context += doc_input[context_idx] + sep_token 
 
-                concat_input = _context + sep_token + prompt + ip + after_ip 
+                concat_input = _context + prompt + ip + after_ip 
                 inputs.append(concat_input)
 
     else:
