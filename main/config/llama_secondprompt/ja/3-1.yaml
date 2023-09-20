@@ -13,7 +13,7 @@ generic:
   batch_size: 4
   model_checkpoint : /mnt/data-poseidon/sumire/hf_llama
   k : 4
-  prompt_type : 1
+  prompt_type : 2
   max_new_tokens : 64 #128 
   max_length : 1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4 when context size increased source side is cutted so make it 1024 now
-  cfg_name : llama-ja-3-1
+  cfg_name : llama-ja-3-1-p2
