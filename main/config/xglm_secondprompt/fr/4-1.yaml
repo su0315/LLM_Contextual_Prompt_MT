@@ -15,4 +15,4 @@ generic:
   prompt_type : 2
   max_new_tokens : 64 #64 #should be more than 256 otherwise metrics function np.delete will not work 
   max_length : 512 # 512
-  cfg_name : xglm-fr-4-1_secondprompt
+  cfg_name : xglm-p2-fr-4-1

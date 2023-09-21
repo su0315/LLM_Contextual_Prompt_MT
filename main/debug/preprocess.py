@@ -82,7 +82,7 @@ def select_context(context_size, doc_input, current_idx, sep_token, prompt_type)
         # If context idx is not the left side of the beggining of the doc_inputs
         
         if context_idx >= 0:     
-            #context_list.append(doc_input[context_idx])
+            #context_list.append(doc_input[context_idx]) ## call summarized context 
             _context += doc_input[context_idx]
             if prompt_type != 2:
                 _context += sep_token
@@ -175,7 +175,7 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
 
         else:
             #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
-            inputs = [few_shots + sep_token + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
+            inputs = [few_shots + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
         
     
     if api is True:

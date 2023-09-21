@@ -12,7 +12,7 @@ generic:
   batch_size: 4
   model_checkpoint : facebook/xglm-7.5B
   k : 4
-  prompt_talk_id : 1548
+  prompt_type : 2
   max_new_tokens : 64 #64 #should be more than 256 otherwise metrics function np.delete will not work 
   max_length : 512 # 512
-  cfg_name : xglm-fr-5-1
+  cfg_name : xglm-p2-fr-5-1

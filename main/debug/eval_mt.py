@@ -37,7 +37,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.batch_size", type=int, default=0, help="the batch size of evaluation")
     parser.add_argument("--generic.model_checkpoint", required=True, metavar="FILE", help="model_checkpoint")
     parser.add_argument("--generic.k", type=int, default=0, help="the number of few shot")
-    parser.add_argument("--generic.prompt_type", type=int, default=0, help="the type of the prompt")
+    parser.add_argument("--generic.prompt_type", type=int, default=1, help="the type of the prompt")
     parser.add_argument("--generic.max_new_tokens", type=int, default=0, help="max_new_tokens")
     parser.add_argument("--generic.max_length", type=int, default=0, help="max_length for input and labels")
     parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
