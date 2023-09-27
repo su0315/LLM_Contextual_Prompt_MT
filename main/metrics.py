@@ -3,7 +3,7 @@ import numpy as np
 import preprocess
 import json
 
-def postprocess_text(preds, labels, input_ids, model_checkpoint):
+def postprocess_text(preds, labels, input_ids, model_checkpoint, prompt_type):
 
     preds = [pred.strip() for pred in preds]
     labels = [[label.strip()] for label in labels]
@@ -14,13 +14,14 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint):
         preds = [pred.split("\n")[0] for pred in preds] # Extract only the first prediction 
         #input_ids = [input_id.split("\n")[-1][:-2] for input_id in input_ids] # Extract the input from examples + input [:-2] works for removing "=>" ?
         
-    #if "xglm" in model_checkpoint:
-        #input_ids = [input_id[:-1] for input_id in input_ids] # Extract the input from examples + input [:-1] works for removing "=" ?
+    if prompt_type == 3:
+        break_token = " <b> "
+        preds = [pred.split(break_token)[-1] for pred in preds]
 
     return preds, labels, input_ids
 
 
-def compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds):
+def compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type):
     preds, decoded_labels, input_ids = eval_preds
     decoded_input_ids = input_ids
     
@@ -45,7 +46,7 @@ def compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokeni
         
         #decoded_input_ids = tokenizer.batch_decode(input_ids, skip_special_tokens=True)
    
-    decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint)
+    decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint, prompt_type)
     
     metric1 = evaluate.load("sacrebleu")
     metric2 =  evaluate.load("comet")

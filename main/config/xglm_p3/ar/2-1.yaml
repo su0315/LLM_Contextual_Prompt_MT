@@ -1,0 +1,18 @@
+generic:
+  data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
+  #src_lang: en
+  tgt_lang: ar
+  src_context: 1
+  #tgt_context: 0
+  #dropout: 0.0
+  #speaker: False
+  #random_context: False
+  #tag: False
+  #output_dir: "./results/" # Modify here
+  batch_size: 8
+  model_checkpoint : facebook/xglm-7.5B
+  k : 4
+  prompt_talk_id : 1548
+  max_new_tokens : 64 #64 #should be more than 256 otherwise metrics function np.delete will not work 
+  max_length : 512 # 512
+  cfg_name : xglm-ar-2-1

@@ -8,8 +8,8 @@ import os
 from transformers import DataCollatorForLanguageModeling
 from functools import partial
 import json
-from main.debug.preprocess import preprocess_function, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd
-from main.debug.metrics import compute_metrics
+from main.preprocess import preprocess_function, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd
+from main.metrics import compute_metrics
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
 from tqdm import tqdm
@@ -141,7 +141,8 @@ def evaluate_mt(
     sources,
     inputs, 
     labels, 
-    output_dir
+    output_dir,
+    prompt_type
     ):
 
     results = []
@@ -161,7 +162,7 @@ def evaluate_mt(
             print ("LABEL", label)
             pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
             eval_preds = (np.asarray([pred]), np.asarray([label]), np.asarray([src]))
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
+            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
             print (decoded_preds)
             # Write results to text file
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
@@ -217,7 +218,7 @@ def evaluate_mt(
             
             # Evaluate
             eval_preds = (batch_output.cpu(), batch_label, batch_source)# To convert to numpy in evaluate function
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds)
+            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
         
             # Write results to text file
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
@@ -321,7 +322,8 @@ def main():
         sources,
         inputs, 
         labels, 
-        output_dir
+        output_dir,
+        prompt_type
         )
     print ("Evaluation Successful")
 

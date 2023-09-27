@@ -2,19 +2,18 @@
 generic:
   data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
   #src_lang: en
-  tgt_lang: ja
-  src_context: 2
+  tgt_lang: zh
+  src_context: 0
   #tgt_context: 0
   #dropout: 0.0
   #speaker: False
   #random_context: False
   #tag: False
   #output_dir: "./results/" # Modify here
-  batch_size: 4
-  model_checkpoint : upstage/Llama-2-70b-instruct-v2
+  batch_size: 2
+  model_checkpoint : /mnt/data-poseidon/sumire/hf_llama
   k : 4
-  prompt_type : 3
+  prompt_talk_id : 1548
   max_new_tokens : 64 #128 
-  max_length : 1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
-  api: True
-  cfg_name : Llama-2-70b-instruct-v2-p3-ja-3-1
+  max_length : 512 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
+  cfg_name : llama-zh-1-1-sacre

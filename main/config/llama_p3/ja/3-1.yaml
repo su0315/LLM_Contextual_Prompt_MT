@@ -10,11 +10,10 @@ generic:
   #random_context: False
   #tag: False
   #output_dir: "./results/" # Modify here
-  batch_size: 4
-  model_checkpoint : upstage/Llama-2-70b-instruct-v2
+  batch_size: 2
+  model_checkpoint : /mnt/data-poseidon/sumire/hf_llama
   k : 4
   prompt_type : 3
   max_new_tokens : 64 #128 
-  max_length : 1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
-  api: True
-  cfg_name : Llama-2-70b-instruct-v2-p3-ja-3-1
+  max_length : 2048 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4 when context size increased source side is cutted so make it 1024 now
+  cfg_name : llama-p3-2048-ja-3-1
