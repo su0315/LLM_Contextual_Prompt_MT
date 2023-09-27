@@ -8,8 +8,8 @@ import os
 from transformers import DataCollatorForLanguageModeling
 from functools import partial
 import json
-from main.preprocess import preprocess_function, generate_prompt, preprocess_function_bsd, generate_prompt_bsd
-from main.metrics import compute_metrics
+from main.debug.preprocess import preprocess_function, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd
+from main.debug.metrics import compute_metrics
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
 from tqdm import tqdm
@@ -37,7 +37,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.batch_size", type=int, default=0, help="the batch size of evaluation")
     parser.add_argument("--generic.model_checkpoint", required=True, metavar="FILE", help="model_checkpoint")
     parser.add_argument("--generic.k", type=int, default=0, help="the number of few shot")
-    parser.add_argument("--generic.prompt_talk_id", type=int, default=0, help="the talk id to be used for few shot learning")
+    parser.add_argument("--generic.prompt_type", type=int, default=1, help="the type of the prompt")
     parser.add_argument("--generic.max_new_tokens", type=int, default=0, help="max_new_tokens")
     parser.add_argument("--generic.max_length", type=int, default=0, help="max_length for input and labels")
     parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
@@ -90,7 +90,7 @@ def read_data(
     model_checkpoint, 
     src_context_size,
     k, 
-    prompt_talk_id, 
+    prompt_type, 
     max_length, 
     tokenizer,
     cfg_name
@@ -101,31 +101,31 @@ def read_data(
         dataset = load_dataset("json", data_files=data_files)
         print ("The num of sent in train set before preprocess", len([sent for doc in dataset["train"]["doc"] for sent in doc["en"]]))
         print ("The num of sent in test set before preprocess", len([sent for doc in dataset["test"]["doc"] for sent in doc["en"]]))
-        prompt = generate_prompt(dataset["train"], tgt_lang, model_checkpoint, k, prompt_talk_id)
+        few_shots = generate_few_shots(dataset["train"], src_context_size, tgt_lang, model_checkpoint, k, prompt_type)
         sources = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc["en"]])
 
         if api is True:
-            inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"])
+            inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
         else:
-            inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, prompt, prompt_talk_id, max_length, tokenizer, dataset["test"]).input_ids
+            inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
         labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
         output_dir = f"./results/ted/en-{tgt_lang}/{cfg_name}/"
 
     elif "BSD-master" in data_path:
         data_files = {"train":data_path+"train.json","test":data_path+"test.json"}
         dataset = load_dataset("json", data_files=data_files)
-        prompt = generate_prompt_bsd(dataset["train"], tgt_lang, k)
+        few_shots = generate_prompt_bsd(dataset["train"], tgt_lang, k)
         sources = np.asarray([sent['en_sentence'] for doc in dataset["test"]["conversation"] for sent in doc])
         if api is True:
-            inputs = preprocess_function_bsd(tgt_lang, api, prompt, max_length, tokenizer, dataset["test"])
+            inputs = preprocess_function_bsd(tgt_lang, api, few_shots, max_length, tokenizer, dataset["test"])
         
         else:
-            inputs = preprocess_function_bsd(tgt_lang, api, prompt, max_length, tokenizer, dataset["test"]).input_ids
+            inputs = preprocess_function_bsd(tgt_lang, api, few_shots, max_length, tokenizer, dataset["test"]).input_ids
         #labels = preprocess_function_bsd(tgt_lang, prompt, max_length, tokenizer, dataset["test"]).labels
         labels = np.asarray([sent['ja_sentence'] for doc in dataset["test"]["conversation"] for sent in doc])
         output_dir = f"./results/BSD/en-{tgt_lang}/{cfg_name}/"
 
-    return dataset, prompt, sources, inputs, labels, output_dir
+    return dataset, few_shots, sources, inputs, labels, output_dir
 
 def evaluate_mt(
     api,
@@ -155,7 +155,7 @@ def evaluate_mt(
 
     if api is True: # No batch, directly input string to the model
 
-        for inp, label, src in zip(inputs[662:], labels[662:], sources[662:]): 
+        for inp, label, src in zip(inputs, labels, sources): 
             num_batches += 1
             print ("INP", inp)
             print ("LABEL", label)
@@ -261,7 +261,7 @@ def main():
     model_checkpoint = cfg.generic.model_checkpoint
     batch_size = cfg.generic.batch_size
     k = cfg.generic.k
-    prompt_talk_id =  cfg.generic.prompt_talk_id
+    prompt_type =  cfg.generic.prompt_type
     max_new_tokens = cfg.generic.max_new_tokens
     max_length = cfg.generic.max_length
     cfg_name = cfg.generic.cfg_name
@@ -272,14 +272,14 @@ def main():
     model, tokenizer = initialize_model(model_checkpoint, api)
 
     # Load Dataset
-    dataset, prompt, sources, inputs, labels, output_dir  = read_data(
+    dataset, few_shots, sources, inputs, labels, output_dir  = read_data(
         data_path, 
         tgt_lang, 
         api,
         model_checkpoint, 
         src_context_size,
         k, 
-        prompt_talk_id, 
+        prompt_type, 
         max_length, 
         tokenizer,
         cfg_name
@@ -298,11 +298,11 @@ def main():
             f"model_checkpoint: {model_checkpoint}", 
             f"batch_size: {batch_size}", 
             f"k: {k}",
-            f"prompt_talk_id: {prompt_talk_id}", 
+            f"prompt_type: {prompt_type}", 
             f"max_new_tokens: {max_new_tokens}", 
             f"max_length: {max_length}", 
             f"cfg_name: {cfg_name}",
-            f"prompt+source:\n {prompt}",
+            f"prompt+source:\n {few_shots}",
             ]:
             wf.write(f"{i}\n")
 
@@ -327,4 +327,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
