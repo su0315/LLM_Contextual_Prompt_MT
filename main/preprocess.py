@@ -18,13 +18,16 @@ def generate_few_shots(data, src_context_size, tgt_lang, model_checkpoint, k, pr
         _few_shots = f"""Translate English to {target_language[tgt_lang]}:{sep_token}"""
 
     # Determine few-shot example 
-    random.seed(10)
+    seed = 10 #12 #11 # 10
+    random.seed(seed)
     #np.random.seed(10)
     # Random prompt doc id
     #for i in range(k):
-    for i in range(src_context_size):
-        rd_doc_id = random.randint(0, len(data["talk_id"]))
+    for i in range(k):
+        rd_doc_id = random.randint(0, len(data["talk_id"])-1)
+        print (len(data["talk_id"]))
         print ("rd_doc_id", rd_doc_id)
+        print (data["talk_id"])
         talk_id = data["talk_id"][rd_doc_id]
         print ("talk_id", talk_id)
         rd_sent_id =random.randint(0, len(data["doc"][rd_doc_id]))

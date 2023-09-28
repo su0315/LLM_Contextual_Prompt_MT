@@ -16,7 +16,7 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, prompt_type):
         
     if prompt_type == 3:
         break_token = " <b> "
-        preds = [pred.split(break_token)[-1] for pred in preds]
+        preds = [pred.split(break_token)[-1][3:] for pred in preds]
 
     return preds, labels, input_ids
 
@@ -29,6 +29,8 @@ def compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokeni
     if api is True:
         decoded_preds = preds
         decoded_input_ids = input_ids
+        print ("preds before postprocess", decoded_preds)
+
         
     else:
         sep = tokenizer.sep_token_id
@@ -37,14 +39,7 @@ def compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokeni
         if isinstance(preds, tuple):
             preds = preds
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-
-        # Input_ids
-        #input_ids = np.where(input_ids != -100, input_ids, tokenizer.pad_token_id)
-        
-        #if "xglm" in model_checkpoint:
-            #input_ids = [ np.array_split(item, np.where(item == sep)[-1])[-1] for item in input_ids ] 
-        
-        #decoded_input_ids = tokenizer.batch_decode(input_ids, skip_special_tokens=True)
+        print ("preds before postprocess", decoded_preds)
    
     decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint, prompt_type)
     

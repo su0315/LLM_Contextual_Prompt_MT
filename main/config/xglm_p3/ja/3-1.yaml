@@ -15,4 +15,4 @@ generic:
   prompt_type : 3
   max_new_tokens : 64 #64 #should be more than 256 otherwise metrics function np.delete will not work 
   max_length : 512 # 512
-  cfg_name : xglm-p3-<b>-fixcont-nosep-postprocess-ja-3-1
+  cfg_name : xglm-p3-ja-3-1
