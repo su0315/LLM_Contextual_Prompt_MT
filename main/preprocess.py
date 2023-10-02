@@ -4,7 +4,7 @@ def generate_few_shots(data, src_context_size, tgt_lang, model_checkpoint, k, pr
 
     target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
 
-    break_token = " <b> "
+    break_token = "<#b#>"
 
     #K-shot Prompt
     if "xglm" in model_checkpoint:
@@ -72,7 +72,7 @@ def select_context(context_size, doc_input, current_idx, sep_token, prompt_type)
 
 def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
 
-    break_token = " <b> "
+    break_token = "<#b#>"
  
     if "xglm" in model_checkpoint:
         after_ip = " = "
@@ -97,14 +97,6 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
             for idx, ip in enumerate(doc_input):
                 _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
 
-                """
-                    # Check each context index given the context size and current input index
-                    for context_window in range(src_context_size, 0, -1):
-                        context_idx = idx - context_window
-                        # If context idx is not the left side of the beggining of the doc_inputs
-                        if context_idx >= 0: 
-                            _context = context_inst + doc_input[context_idx] + sep_token
-                """
                 if prompt_type==1:
                     #concat_input = _context + prompt + ip + after_ip 
                     #inputs.append(concat_input)
@@ -114,8 +106,15 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
                     concat_input = few_shots + _context + break_token + ip + after_ip ### Put the special break token before input
 
                 elif prompt_type == 3:
-                    concat_input = few_shots + _context + break_token + ip + after_ip
-            
+                    if _context != "":
+                        _context += break_token  # break token only when context exists
+                    
+                    if api is True:
+                        concat_input = "### User:\n" + few_shots + _context + ip + "\n\n### Assistant:\n"
+
+                    else:
+                        concat_input = few_shots + _context + ip + after_ip # break token before ip or not ?
+
                 inputs.append(concat_input)
 
     else:
@@ -125,7 +124,9 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
 
         else:
             #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
+
             inputs = [few_shots + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
+            
         
     
     if api is True:

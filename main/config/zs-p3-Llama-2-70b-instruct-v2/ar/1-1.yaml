@@ -2,8 +2,8 @@
 generic:
   data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
   #src_lang: en
-  tgt_lang: ja
-  src_context: 1
+  tgt_lang: ar
+  src_context: 0
   #tgt_context: 0
   #dropout: 0.0
   #speaker: False
@@ -13,8 +13,8 @@ generic:
   batch_size: 4
   model_checkpoint : upstage/Llama-2-70b-instruct-v2
   k : 4
-  prompt_type : 3
+  prompt_talk_id : 1548
   max_new_tokens : 64 #128 
-  max_length : 1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
+  max_length : 512 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
   api: True
-  cfg_name : Llama-2-70b-instruct-v2-p3-ja-2-1_rest
+  cfg_name : Llama-2-70b-instruct-v2-ar-1-1

@@ -65,7 +65,7 @@ def initialize_model(model_checkpoint, api):
         if "Llama-2-70b-instruct-v2" in model_checkpoint: 
             model_name, model_addr = models[0]["name"], models[0]["address"]
             model = Client("http://" + model_addr)
-            model.timeout = 20 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
+            model.timeout = 500 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
             tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
 
     elif "xglm" in model_checkpoint:
@@ -165,6 +165,10 @@ def evaluate_mt(
             result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
             print (decoded_preds)
             # Write results to text file
+
+            with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
+                wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
+            
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
                 for pred in decoded_preds:
                     wf.write(pred.strip()+'\n')
