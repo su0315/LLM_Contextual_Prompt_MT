@@ -62,11 +62,23 @@ def initialize_model(model_checkpoint, api):
         TGI_CENTRAL_ADDRESS="localhost:8765"
         models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
         
-        if "Llama-2-70b-instruct-v2" in model_checkpoint: 
-            model_name, model_addr = models[0]["name"], models[0]["address"]
-            model = Client("http://" + model_addr)
-            model.timeout = 500 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
-            tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
+        
+        if "Llama-2-70b-instruct-v2" in model_checkpoint:
+            model_name = None
+            for i in range(len(models)):
+                if models[i]["name"] == "upstage/Llama-2-70b-instruct-v2":
+                    model_name, model_addr = models[i]["name"], models[i]["address"]
+                    print (model_name, model_addr)
+                    model = Client("http://" + model_addr)
+                    model.timeout = 500 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
+                    tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
+
+                
+            if model_name is None:
+                raise Exception('model upstage/Llama-2-70b-instruct-v2 is not available.')
+
+                    
+
 
     elif "xglm" in model_checkpoint:
         tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
@@ -155,23 +167,29 @@ def evaluate_mt(
     lang_to_code = {"ja": "ja_XX", "ar":"ar_AR", "de":"de_DE", "fr":"fr_XX","ko":"ko_KR", "zh": "zh_CN"}
 
     if api is True: # No batch, directly input string to the model
+        all_preds = []
+        all_labels = []
+        all_srcs = []
+        print ("Hi")
 
         for inp, label, src in zip(inputs, labels, sources): 
+            print ("Hi2")
             num_batches += 1
             print ("INP", inp)
             print ("LABEL", label)
             pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
-            eval_preds = (np.asarray([pred]), np.asarray([label]), np.asarray([src]))
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
-            print (decoded_preds)
+            
+            all_preds.append(pred)
+            all_labels.append(label)
+            all_srcs.append(src)
+            
+            #eval_preds = (np.asarray([pred]), np.asarray([label]), np.asarray([src]))
+            #result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
             # Write results to text file
 
             with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
                 wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
-            
-            with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
-                for pred in decoded_preds:
-                    wf.write(pred.strip()+'\n')
+                print ("Hi3")
 
             with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
                 wf.write(label.strip()+'\n')
@@ -182,21 +200,30 @@ def evaluate_mt(
             with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
                 wf.write(inp.strip()+'\n')
         
+        print ("Hi4")
+        eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
+        result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+        print (decoded_preds)
+            #bleu_sum += result["bleu"]
+            #comet_sum += result["comet"]
+            #gen_len_sum += result["gen_len"]
+
+        with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
+            
+            #bleu = bleu_sum / num_batches
+            #comet = comet_sum / num_batches
+            #gen_len = gen_len_sum/ num_batches
+            bleu_score = result["bleu"]
+            comet_score = result["comet"]
+            gen_len_score = result["gen_len"]
+
+            for metric, score in zip(["bleu", "comet", "gen_len"], [bleu_score, comet_score, gen_len_score]):
+                wf.write(f"{metric}: {score}\n") 
+
+        with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
+            for pred in decoded_preds:
+                wf.write(pred.strip()+'\n')
         
-            bleu_sum += result["bleu"]
-            comet_sum += result["comet"]
-            gen_len_sum += result["gen_len"]
-
-            with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
-                
-                bleu = bleu_sum / num_batches
-                comet = comet_sum / num_batches
-                gen_len = gen_len_sum/ num_batches
-
-                wf.write(f"bleu: {bleu}\n") #ensure_ascii=False
-                wf.write(f"comet: {comet}\n") 
-                wf.write(f"gen_len: {gen_len}\n") 
-
 
     else: 
         model.to(device)    

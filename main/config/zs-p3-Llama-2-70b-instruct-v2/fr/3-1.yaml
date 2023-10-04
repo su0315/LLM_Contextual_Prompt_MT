@@ -15,6 +15,6 @@ generic:
   k : 0
   prompt_type : 3
   max_new_tokens : 1024 #128 
-  max_length : 1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
+  max_length : 2048 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
   api: True
-  cfg_name : Llama-2-70b-instruct-v2-zs-p3-<#b#>-fr-3-1
+  cfg_name : Llama-2-70b-instruct-v2-zs-p3-<#b#>-2048-fr-3-1

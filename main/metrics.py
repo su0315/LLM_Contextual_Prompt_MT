@@ -15,12 +15,20 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, prompt_type):
         #input_ids = [input_id.split("\n")[-1][:-2] for input_id in input_ids] # Extract the input from examples + input [:-2] works for removing "=>" ?
         
     if prompt_type == 3:
+        tgt_preds = []
         break_token = "<#b#>"
+        
         for pred in preds:
+            print ("pred", pred)
             if break_token in pred:
                 print ("break token founded")
-                preds = [pred.split(break_token)[1] for pred in preds]
-                print (preds)
+                tgt_pred = pred.split(break_token)[1]
+                tgt_preds.append(tgt_pred)
+                print (tgt_preds)
+            else:
+                print ("break token not founded")
+                tgt_preds.append(pred)
+        preds = tgt_preds
 
     return preds, labels, input_ids
 
