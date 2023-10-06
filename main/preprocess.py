@@ -100,7 +100,12 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
                 if prompt_type==1:
                     #concat_input = _context + prompt + ip + after_ip 
                     #inputs.append(concat_input)
-                    concat_input = context_inst + _context + few_shots + ip + after_ip # need to check when context size == 0, there are no two times sep_token 
+                    if api is True:
+                        print ("api!!!!!!!!!!!!!!!!!!!!1")
+                        concat_input = "### User:\n" + context_inst + _context + few_shots + ip + "\n\n### Assistant:\n"
+                    else:
+                        concat_input = context_inst + _context + few_shots + ip + after_ip # need to check when context size == 0, there are no two times sep_token 
+
                     
                 elif prompt_type ==2:
                     concat_input = few_shots + _context + break_token + ip + after_ip ### Put the special break token before input
@@ -125,7 +130,10 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
         else:
             #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
 
-            inputs = [few_shots + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
+            if api:
+                inputs = ["### User:\n" + few_shots + sent + after_ip + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
+            else:
+                inputs = [few_shots + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
             
         
     

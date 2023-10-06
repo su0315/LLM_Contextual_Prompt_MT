@@ -172,6 +172,7 @@ def evaluate_mt(
         all_srcs = []
         print ("Hi")
 
+        # Generate
         for inp, label, src in zip(inputs, labels, sources): 
             print ("Hi2")
             num_batches += 1
@@ -184,7 +185,7 @@ def evaluate_mt(
             all_srcs.append(src)
             
             #eval_preds = (np.asarray([pred]), np.asarray([label]), np.asarray([src]))
-            #result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+            #result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
             # Write results to text file
 
             with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
@@ -201,18 +202,15 @@ def evaluate_mt(
                 wf.write(inp.strip()+'\n')
         
         print ("Hi4")
+
+
+        # Evaluate
         eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
-        result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+        result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
         print (decoded_preds)
-            #bleu_sum += result["bleu"]
-            #comet_sum += result["comet"]
-            #gen_len_sum += result["gen_len"]
 
         with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
             
-            #bleu = bleu_sum / num_batches
-            #comet = comet_sum / num_batches
-            #gen_len = gen_len_sum/ num_batches
             bleu_score = result["bleu"]
             comet_score = result["comet"]
             gen_len_score = result["gen_len"]
@@ -249,7 +247,7 @@ def evaluate_mt(
             
             # Evaluate
             eval_preds = (batch_output.cpu(), batch_label, batch_source)# To convert to numpy in evaluate function
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(dataset, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
         
             # Write results to text file
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
@@ -324,7 +322,7 @@ def main():
     with open(output_dir+'/config','w', encoding='utf8') as wf:
         for i in [
             f"tgt_lang: {tgt_lang}", 
-            f"data_path{data_path}", 
+            f"data_path: {data_path}", 
             f"src_context_size: {src_context_size}",  
             f"api: {api}",
             f"model_checkpoint: {model_checkpoint}", 
