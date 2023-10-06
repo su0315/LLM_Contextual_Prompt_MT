@@ -3,39 +3,36 @@ import numpy as np
 import preprocess
 import json
 
-def postprocess_text(preds, labels, input_ids, model_checkpoint, prompt_type):
+def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_type):
 
     preds = [pred.strip() for pred in preds]
     labels = [[label.strip()] for label in labels]
     input_ids = [input_id.strip() for input_id in input_ids]
     
     # Llama post process
-    if "llama" in model_checkpoint:
+    if "llama" in model_checkpoint: # only original llama, not using "###User:"
         preds = [pred.split("\n")[0] for pred in preds] # Extract only the first prediction 
         #input_ids = [input_id.split("\n")[-1][:-2] for input_id in input_ids] # Extract the input from examples + input [:-2] works for removing "=>" ?
     print ("prompt_typ", prompt_type)
 
-    if prompt_type ==1:
+    if prompt_type ==1 and api:
         print ("yes, prompt is 1")
         tgt_preds = []
         
         for pred in preds:
             print ("pred", pred)
-            if "\n" in pred and "\n\n" not in pred:
+            if "\n" in pred:
                 print ("break token founded")
-                tgt_pred = pred.split("\n")[1]
+                tgt_pred = pred.split("\n")[-1]
                 print ("split1", tgt_pred)
-            if "\n\n" in pred:
-                tgt_pred = pred.split("\n\n")[1]
-                print ("split2", tgt_pred)
                 tgt_preds.append(tgt_pred)
-                
             else:
                 print ("break token not founded")
                 tgt_preds.append(pred)
         preds = tgt_preds
         print (tgt_preds)
-    if prompt_type == 3:
+
+    elif prompt_type == 3:
         tgt_preds = []
         break_token = "<#b#>"
         
@@ -47,8 +44,15 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, prompt_type):
                 tgt_preds.append(tgt_pred)
                 print (tgt_preds)
             else:
-                print ("break token not founded")
-                tgt_preds.append(pred)
+                if "\n" in pred:
+                    print ("back-n founded")
+                    tgt_pred = pred.split("\n")[-1]
+                    print ("split1", tgt_pred)
+                    tgt_preds.append(tgt_pred)
+                
+                else:
+                    print ("break token not founded")
+                    tgt_preds.append(pred)
         preds = tgt_preds
 
     return preds, labels, input_ids
@@ -75,7 +79,7 @@ def compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         print ("preds before postprocess", decoded_preds)
    
-    decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint, prompt_type)
+    decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint, api, prompt_type)
     
     metric1 = evaluate.load("sacrebleu")
     metric2 =  evaluate.load("comet")
