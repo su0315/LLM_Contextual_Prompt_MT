@@ -33,7 +33,8 @@ def read_config(output_dir):
     try:
         with open(f"{output_dir}/config", 'r') as file:
             for line in file:
-                if ":" in line and "prompt" not in line:
+
+                if ":" in line and "prompt+source" not in line:
                     # Split each line at the colon (":") to separate the key and value
                     print (line)
                     key, value = line.strip().split(":")
@@ -43,7 +44,7 @@ def read_config(output_dir):
         print(f"File '{output_dir}' not found.")
 
     # Now you have the configuration as a dictionary
-    # You can access individual elements like this:
+    # You can access individual elements like this: ################# Correct CO
     tgt_lang = config.get('tgt_lang', None)
     data_path = config.get('data_path', None)
     src_context_size = int(config.get('src_context_size', None))
@@ -51,16 +52,16 @@ def read_config(output_dir):
     model_checkpoint = config.get('model_checkpoint', None)
     batch_size = int(config.get('batch_size', None))
     max_new_tokens = int(config.get('max_new_tokens', None))
+    prompt_type = int(config.get('prompt_type', None))
+    print (prompt_type)
     max_length = int(config.get('max_length', None))
     cfg_name = config.get('cfg_name', None)
     k = int(config.get('k', None))
-    prompt_type = int(config.get('prompt_type', 3))
 
     return tgt_lang, data_path, src_context_size, api, model_checkpoint, batch_size, k, prompt_type, max_new_tokens, max_length, cfg_name
 
 
 def initialize_tokenizer(model_checkpoint, api):
-    print (api)
 
     if "llama" in model_checkpoint:
         print ("Hi!")
@@ -103,7 +104,7 @@ def select_instances(criteria, output_dir):
 
         for line in lines:
             line = line.strip()
-            print ("current_chunk", current_chunk)
+            
             if line == "##########":
                 current_id += 1
                 # Check if the current chunk is not empty and append it to the list
@@ -177,9 +178,9 @@ def evaluate_instances(
         # Evaluate
         eval_preds = (np.asarray(preds), np.asarray(labels), np.asarray(sources))
         result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
-        print (decoded_preds)
 
-        with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
+
+        with open(output_dir+'/test_score_with_b.txt','w', encoding='utf8') as wf:
             
             bleu_score = result["bleu"]
             comet_score = result["comet"]
@@ -188,9 +189,17 @@ def evaluate_instances(
             for metric, score in zip(["bleu", "comet", "gen_len"], [bleu_score, comet_score, gen_len_score]):
                 wf.write(f"{metric}: {score}\n") 
 
-        with open(output_dir+'/translations_with_b.txt','a', encoding='utf8') as wf:
+        with open(output_dir+'/translations_with_b.txt','w', encoding='utf8') as wf:
             for pred in decoded_preds:
                 wf.write(pred.strip()+'\n')
+
+        with open(output_dir+'/src_with_b.txt','w', encoding='utf8') as wf:
+            for src in decoded_input_ids:
+                wf.write(src.strip()+'\n')
+
+        with open(output_dir+'/ref_with_b.txt','w', encoding='utf8') as wf:
+            for ref in decoded_labels:
+                wf.write(f"{ref}\n")
         
 
 def main():
@@ -202,7 +211,6 @@ def main():
     criteria = "<#b#>"
     preds, sources, labels = select_instances(criteria, output_dir)
 
-    print (len(preds), len(sources), len(labels), labels)
     # Generate and Evaluate
     evaluate_instances(
         api,

@@ -13,8 +13,8 @@ generic:
   batch_size: 4
   model_checkpoint : upstage/Llama-2-70b-instruct-v2
   k : 0
-  prompt_type : 3
+  prompt_type : 1
   max_new_tokens : 1024 #128 
   max_length : 1024 #512 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
   api: True
-  cfg_name : Llama-2-70b-instruct-v2-zs-p3-<#b#>-fr-1-1
+  cfg_name : Llama-2-70b-instruct-v2-zs-p1-#b#-nsplit-fr-1-1

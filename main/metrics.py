@@ -12,11 +12,8 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
     # Llama post process
     if "llama" in model_checkpoint: # only original llama, not using "###User:"
         preds = [pred.split("\n")[0] for pred in preds] # Extract only the first prediction 
-        #input_ids = [input_id.split("\n")[-1][:-2] for input_id in input_ids] # Extract the input from examples + input [:-2] works for removing "=>" ?
-    print ("prompt_typ", prompt_type)
-
+    
     if prompt_type ==1 and api:
-        print ("yes, prompt is 1")
         tgt_preds = []
         
         for pred in preds:
@@ -32,7 +29,7 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
         preds = tgt_preds
         print (tgt_preds)
 
-    elif prompt_type == 3:
+    elif prompt_type == 3 and api:
         tgt_preds = []
         break_token = "<#b#>"
         
@@ -54,7 +51,7 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
                     print ("break token not founded")
                     tgt_preds.append(pred)
         preds = tgt_preds
-
+        print (tgt_preds)
     return preds, labels, input_ids
 
 
@@ -78,7 +75,7 @@ def compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval
 
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         print ("preds before postprocess", decoded_preds)
-   
+    
     decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint, api, prompt_type)
     
     metric1 = evaluate.load("sacrebleu")
