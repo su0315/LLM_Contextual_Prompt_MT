@@ -8,7 +8,7 @@ import os
 from transformers import DataCollatorForLanguageModeling
 from functools import partial
 import json
-from main.preprocess import preprocess_function, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd
+from main.preprocess import preprocess_function, preprocess_function_contrapro, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd
 from main.metrics import compute_metrics
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
@@ -137,7 +137,24 @@ def read_data(
         labels = np.asarray([sent['ja_sentence'] for doc in dataset["test"]["conversation"] for sent in doc])
         output_dir = f"./results/BSD/en-{tgt_lang}/{cfg_name}/"
 
-    return dataset, few_shots, sources, inputs, labels, output_dir
+    if "ContraPro" in data_path:
+        if api is True:
+            inputs, labels, sources, few_shots = preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length)
+            output_dir = f"./results/contrapro/en-{tgt_lang}/{cfg_name}/"
+            labels = np.asarray(labels)
+            sources = np.asarray(sources)
+
+            # test data 80 %
+            test_split = int(len(labels)*0.2)
+            inputs = inputs[:test_split]
+            sources = sources[:test_split]
+            labels = labels[:test_split]
+
+        else:
+            print ("preprocess not defined")
+
+
+    return few_shots, sources, inputs, labels, output_dir
 
 def evaluate_mt(
     api,
@@ -149,7 +166,6 @@ def evaluate_mt(
     max_length, 
     device, 
     tgt_lang,
-    dataset, 
     sources,
     inputs, 
     labels, 
@@ -183,10 +199,7 @@ def evaluate_mt(
             all_preds.append(pred)
             all_labels.append(label)
             all_srcs.append(src)
-            
-            #eval_preds = (np.asarray([pred]), np.asarray([label]), np.asarray([src]))
-            #result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
-            # Write results to text file
+           
 
             with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
                 wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
@@ -302,7 +315,7 @@ def main():
     model, tokenizer = initialize_model(model_checkpoint, api)
 
     # Load Dataset
-    dataset, few_shots, sources, inputs, labels, output_dir  = read_data(
+    few_shots, sources, inputs, labels, output_dir  = read_data(
         data_path, 
         tgt_lang, 
         api,
@@ -347,7 +360,6 @@ def main():
         max_length, 
         device, 
         tgt_lang,
-        dataset, 
         sources,
         inputs, 
         labels, 

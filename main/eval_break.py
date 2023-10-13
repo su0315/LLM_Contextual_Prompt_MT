@@ -53,7 +53,6 @@ def read_config(output_dir):
     batch_size = int(config.get('batch_size', None))
     max_new_tokens = int(config.get('max_new_tokens', None))
     prompt_type = int(config.get('prompt_type', None))
-    print (prompt_type)
     max_length = int(config.get('max_length', None))
     cfg_name = config.get('cfg_name', None)
     k = int(config.get('k', None))
@@ -64,12 +63,10 @@ def read_config(output_dir):
 def initialize_tokenizer(model_checkpoint, api):
 
     if "llama" in model_checkpoint:
-        print ("Hi!")
         tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
         tokenizer.add_special_tokens({"pad_token":"<pad>"})
    
     if api:
-        print ("api tokenizer")
         tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
 
     elif "xglm" in model_checkpoint:
@@ -78,7 +75,6 @@ def initialize_tokenizer(model_checkpoint, api):
         #model = XGLMForCausalLM(configuration).from_pretrained(model_checkpoint) 
 
     elif "mbart" in model_checkpoint:
-        print ("mbart model")
         from transformers import MBartConfig, MBart50Tokenizer, MBartForConditionalGeneration, MBart50TokenizerFast
         #configuration = MBartConfig()
         tokenizer = MBart50TokenizerFast.from_pretrained(model_checkpoint)

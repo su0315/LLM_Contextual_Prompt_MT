@@ -17,7 +17,6 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
         tgt_preds = []
         
         for pred in preds:
-            print ("pred", pred)
             if "\n" in pred:
                 print ("break token founded")
                 tgt_pred = pred.split("\n")[-1]
@@ -27,31 +26,26 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
                 print ("break token not founded")
                 tgt_preds.append(pred)
         preds = tgt_preds
-        print (tgt_preds)
 
     elif prompt_type == 3 and api:
         tgt_preds = []
         break_token = "<#b#>"
         
         for pred in preds:
-            print ("pred", pred)
             if break_token in pred:
                 print ("break token founded")
                 tgt_pred = pred.split(break_token)[1]
                 tgt_preds.append(tgt_pred)
-                print (tgt_preds)
             else:
                 if "\n" in pred:
                     print ("back-n founded")
                     tgt_pred = pred.split("\n")[-1]
-                    print ("split1", tgt_pred)
                     tgt_preds.append(tgt_pred)
                 
                 else:
                     print ("break token not founded")
                     tgt_preds.append(pred)
         preds = tgt_preds
-        print (tgt_preds)
     return preds, labels, input_ids
 
 
@@ -63,8 +57,6 @@ def compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval
     if api:
         decoded_preds = preds
         decoded_input_ids = input_ids
-        print ("preds before postprocess", decoded_preds)
-
         
     else:
         sep = tokenizer.sep_token_id
@@ -74,7 +66,6 @@ def compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval
             preds = preds
 
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-        print ("preds before postprocess", decoded_preds)
     
     decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint, api, prompt_type)
     

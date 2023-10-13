@@ -1,4 +1,5 @@
 import random
+import json
 
 def generate_few_shots(data, src_context_size, tgt_lang, model_checkpoint, k, prompt_type):
 
@@ -131,7 +132,7 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
             #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
 
             if api:
-                inputs = ["### User:\n" + few_shots + sent + after_ip + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
+                inputs = ["### User:\n" + few_shots + sent + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
             else:
                 inputs = [few_shots + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
             
@@ -150,6 +151,102 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
     print (inputs[1])
     
     return model_inputs
+
+def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length):
+
+    target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
+    with open(f'{data_path}/contrapro.text.en' , 'r') as file:
+        src_list = []
+        line_counter = 0
+        for line in file:
+            if line_counter % 3 == 0:
+                src_list.append(line.strip())
+            line_counter += 1
+    print ("src", len(src_list))
+    
+    with open(f'{data_path}/contrapro.text.{tgt_lang}' , 'r') as file:
+        tgt_list = []
+        line_counter = 0
+        for line in file:
+            if line_counter % 3 == 0:
+                tgt_list.append(line.strip())
+            line_counter += 1
+    
+    with open('/mnt/data-poseidon/sumire/repos/ContraPro/contrapro.json', "r") as file:
+        json_data = json.load(file)
+
+    # Extract and store the "src_segment" values in a list
+    print ("json file length", len(json_data))
+    tgt_list_json = [item['ref segment'] for item in json_data]
+    src_list_json = [item['src segment'] for item in json_data]
+    print ("tgt", len(tgt_list_json))
+
+    # take intercept of src examples
+    intersection = list(set(src_list).intersection(src_list_json))
+    indices_in_src_list = sorted([src_list.index(element) for element in intersection])
+    indices_in_json_list = sorted([src_list_json.index(element) for element in intersection])
+    #print ("################", len(indices_in_src_list))
+    #print (("################", len(indices_in_json_list)))
+    #print ("intersection_id_in_src", indices_in_src_list[:100])
+    #print ("intersection_id_in_json", indices_in_json_list[:100])
+
+    
+    with open(f'{data_path}/contrapro.context.en' , 'r') as file:
+        sep_token = "\n"
+        context_list = []
+        line_counter = 0
+
+        if src_context_size > 0:        
+            for line in file:
+                if line_counter % (3*src_context_size) == 0:
+                    context = ''
+        
+                if line_counter % (3*src_context_size) <= src_context_size - 1:
+                    context += line.strip()
+                    if line != '':
+                        context += sep_token
+                
+                if line_counter % (3*src_context_size) == src_context_size - 1:
+                    context_list.append(context)
+                
+                line_counter += 1
+
+    print ("context", len(context_list))
+    
+    
+    inputs = []
+    labels = []
+
+
+    # Context for source sentence
+    if prompt_type == 1 and src_context_size >= 1 :
+        context_inst = f"Given context:{sep_token}" 
+    
+    else: 
+        context_inst = ""
+    
+    src_list = [src_list_json[i] for i in indices_in_json_list]
+    tgt_list = [tgt_list_json[i] for i in indices_in_json_list]
+
+    if src_context_size > 0:
+        context_list_json = [context_list[i] for i in indices_in_src_list]
+    
+    #print ("src", len(src_list), "tgt", len(tgt_list), "context", len(context_list_json))
+
+    if src_context_size > 0:
+        for ip, tgt, _context in zip(src_list, tgt_list, context_list_json):
+            concat_input = "### User:\n" + context_inst + _context + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
+            inputs.append(concat_input)
+            labels.append(tgt)
+
+    else:
+        for ip, tgt in zip(src_list, tgt_list):
+            concat_input = "### User:\n" + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
+            inputs.append(concat_input)
+            labels.append(tgt)
+    sources = src_list
+    few_shots = ""
+    return inputs, labels, sources, few_shots
 
 def generate_prompt_bsd(data, tgt_lang, k):
     #K-shot Prompt
@@ -175,3 +272,14 @@ def preprocess_function_bsd(tgt_lang, api, prompt, max_length, tokenizer, data):
             inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True)
         
     return model_inputs
+
+"""
+data_path = "/mnt/data-poseidon/sumire/repos/ContraPro/context_1"
+tgt_lang = "de"
+api = True
+max_length = 1024
+src_context_size = 1
+prompt_type = 1
+inputs, labels = preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length)
+print (labels[-5:], inputs[-5:])
+"""
