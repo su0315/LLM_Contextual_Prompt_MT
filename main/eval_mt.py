@@ -144,12 +144,13 @@ def read_data(
             labels = np.asarray(labels)
             sources = np.asarray(sources)
 
+            """
             # test data 20 %
             test_split = int(len(labels)*0.2)
             inputs = inputs[:test_split]
             sources = sources[:test_split]
             labels = labels[:test_split]
-
+            """
         else:
             print ("preprocess not defined")
 
