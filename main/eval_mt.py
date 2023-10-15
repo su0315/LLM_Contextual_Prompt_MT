@@ -28,7 +28,7 @@ def read_arguments() -> ArgumentParser:
     #parser.add_argument("--cfg", action=ActionConfigFile)
     #parser.add_argument("--generic.src_lang", required=True)
     parser.add_argument("--generic.data_path", required=True, metavar="FILE", help="path to model file for bsd is '/home/sumire/discourse_context_mt/data/BSD-master/'")
-    parser.add_argument("--generic.src_context",type=int, default="src", help="the number of the target context sentence for each input")
+    parser.add_argument("--generic.src_context", default="src", help="the number of the target context sentence for each input")
     #parser.add_argument("--generic.dropout", type=float, choices=np.arange(0.0, 1.0, 0.1), default=0, help="the coword dropout rate")
     #parser.add_argument("--generic.speaker", type=bool, default=False)
     #parser.add_argument("--generic.random_context", type=bool, default=False)
@@ -144,7 +144,7 @@ def read_data(
             labels = np.asarray(labels)
             sources = np.asarray(sources)
 
-            # test data 80 %
+            # test data 20 %
             test_split = int(len(labels)*0.2)
             inputs = inputs[:test_split]
             sources = sources[:test_split]
