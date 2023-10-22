@@ -1,8 +1,8 @@
 generic:
-  data_path: /mnt/data-poseidon/sumire/repos/ContraPro/context_5
+  data_path: /mnt/data-poseidon/sumire/repos/ContraPro/context_6
   #src_lang: en
   #tgt_lang: de
-  src_context: 5
+  src_context: 6
   #tgt_context: 0
   #dropout: 0.0
   #speaker: False
@@ -17,4 +17,4 @@ generic:
   #max_length : 1024 #1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
   api: True
   device: 6
-  cfg_name : transforemersum-distilbert-ctpro-6-1
+  cfg_name : transforemersum-distilbert-ctpro-7-1

@@ -211,19 +211,24 @@ def preprocess_function_contrapro(data_path, model_checkpoint, src_context_size,
         # Context with Antedecedent Distance concatenation
         context_intersec = []
         ante_intersec = []
+        """
         if src_context_size == "1-ante":
             # Version 1: Choose only an antecedent sentence as a context sentence
             for sent_context, alpha in zip(context_chunks_intersec, ante_intersec_non_zero):
                 ante_context = sent_context[-alpha]
                 # if alpha != 0: 
                 context_intersec.append(ante_context)
+                ante_intersec.append(ante_context)
+        """
 
-        elif src_context_size == "ante": 
+        if src_context_size == "ante": 
             # Version 2: Choose preceding sentences after antecedent as context sentences
             print ("Version 2!")
             for sent_context, alpha in zip(context_chunks_intersec, ante_intersec_non_zero):
+                ante_context = sent_context[-alpha]
                 ante_contexts = " ".join(sent_context[-alpha:])
                 context_intersec.append(ante_contexts)
+                ante_intersec.append(ante_context)
 
         else: ##### Summarization target ####
             # (Version 3:) Choose all preceding sentences as context sentences

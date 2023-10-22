@@ -160,7 +160,6 @@ cython_debug/
 #.idea/
 
 # File to be ignore
-results/
 iwslt17_original/
 ar-en/
 de-en/

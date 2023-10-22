@@ -168,7 +168,7 @@ def sample_example(criteria, original_data, original_indices, n_samples):
 
     return sampled_indices
 
-def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length):
+def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length, summarized_contexs):
 
     target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
     sep_token = "\n"
@@ -226,9 +226,15 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
     tgt_intersec = sampled_tgt_intersec # sammpled
     
     # Take context.txt file and choose one example out of duplications and store in context_list #
-    if src_context_size != 0:
+    if summarized_contexs =="distilroberta":
+        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilbert-ctpro-{src_context_size}-1"
+        with open(f'{context_dir}/summarized_contexts.en' , 'r') as file:
+            context_intersec = [line.strip() for line in file]
+    
+    elif src_context_size != 0:
         if src_context_size == "ante" or src_context_size == "1-ante":
             max_c = 26 # max context size (max antecedent distant)
+
         else:
             max_c = src_context_size
 
@@ -237,32 +243,6 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
             
             #context_intersec = [context_list[i] for i in indices_in_src_list]
             #print ("context_list", len(context_list)) # 36031
-            
-            """
-            ### cancelled: Preceding contexts concatenation ####
-            if src_context_size != 0 and src_context_size != "1-ante":   
-                print ("Preceding contexts concatenation") # shouldn't print out this
-                line_counter = 0     
-                for line in file:
-                    if line_counter % (3*src_context_size) == 0:
-                        context = ''
-            
-                    if line_counter % (3*src_context_size) <= src_context_size - 1:
-                        context += line
-                        if line != '':
-                            print ("septoken added")
-                            context += sep_token
-                    
-                    if line_counter % (3*src_context_size) == src_context_size - 1:
-                        print ("septoken added2")
-                        context += sep_token
-                        contexts.append(context)
-                    
-                    line_counter += 1
-                context_intersec = [context_list[i] for i in indices_in_src_list]
-                src_intersec = src_intersection
-                tgt_intersec = tgt_intersection
-            """
     
         contexts = []
         print ("n_sent", n_sent) # 12011

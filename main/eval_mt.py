@@ -23,6 +23,7 @@ print (device)
 def read_arguments() -> ArgumentParser:
     parser = ArgumentParser(description="Command for evaluating models.")
     parser.add_argument("--cfg", action=ActionConfigFile)
+    parser.add_argument("--generic.summarized_contexts", type=str, required=False, default = None,  help="boolean")
     parser.add_argument("--generic.tgt_lang", required=True, help="target language")
     #parser.add_class_arguments(EarlyStoppingCallback, "early_stopping")
     #parser.add_argument("--cfg", action=ActionConfigFile)
@@ -55,7 +56,7 @@ def initialize_model(model_checkpoint, api):
         model = LlamaForCausalLM.from_pretrained(model_checkpoint, use_auth_token=True)
         model.resize_token_embeddings(len(tokenizer))
         model.config.pad_token_id = tokenizer.pad_token_id
-
+    
     elif api is True:
         from text_generation import Client
 
@@ -105,6 +106,7 @@ def read_data(
     prompt_type, 
     max_length, 
     tokenizer,
+    summarized_contexs,
     cfg_name
     ):
 
@@ -139,7 +141,7 @@ def read_data(
 
     if "ContraPro" in data_path:
         if api is True:
-            inputs, labels, sources, few_shots = preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length)
+            inputs, labels, sources, few_shots = preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length, summarized_contexs)
             output_dir = f"./results/contrapro/en-{tgt_lang}/{cfg_name}/"
             labels = np.asarray(labels)
             sources = np.asarray(sources)
@@ -298,7 +300,7 @@ def evaluate_mt(
 def main():
     parser = read_arguments()
     cfg = parser.parse_args()
-
+    summarized_contexts = cfg.generic.summarized_contexts
     tgt_lang = cfg.generic.tgt_lang
     data_path = cfg.generic.data_path
     src_context_size = cfg.generic.src_context
@@ -326,6 +328,7 @@ def main():
         prompt_type, 
         max_length, 
         tokenizer,
+        summarized_contexs,
         cfg_name
         )
 

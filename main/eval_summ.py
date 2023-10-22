@@ -108,9 +108,6 @@ def evaluate_summarization(
     # Generate
     
     for inp, label, src in zip(inputs, labels, sources): 
-        print ("Hi2")
-        print ("INP", inp)
-        print ("LABEL", label)
         pred = model.predict(inp, raw_scores=False, num_summary_sentences=1)
         
         all_preds.append(pred)
