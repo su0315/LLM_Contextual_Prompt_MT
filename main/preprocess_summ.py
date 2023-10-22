@@ -1,57 +1,6 @@
 import random
 import json
 
-def generate_few_shots(data, src_context_size, tgt_lang, model_checkpoint, k, prompt_type):
-
-    target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
-
-    break_token = "<#b#>"
-
-    #K-shot Prompt
-    if "xglm" in model_checkpoint:
-        after_ip = " = "
-        sep_token = "</s>"
-        _few_shots = ""
-
-    elif "llama" or "Llama" in model_checkpoint:
-        after_ip = " => "
-        sep_token = "\n"
-        _few_shots = f"""Translate English to {target_language[tgt_lang]}:{sep_token}"""
-    
-    # Determine few-shot example 
-    seed = 10 #12 #11 # 10
-    random.seed(seed)
-    #np.random.seed(10)
-    # Random prompt doc id
-    #for i in range(k):
-    for i in range(k):
-        rd_doc_id = random.randint(0, len(data["talk_id"])-1)
-        print (len(data["talk_id"]))
-        print ("rd_doc_id", rd_doc_id)
-        print (data["talk_id"])
-        talk_id = data["talk_id"][rd_doc_id]
-        print ("talk_id", talk_id)
-        rd_sent_id =random.randint(0, len(data["doc"][rd_doc_id]))
-        print ("rd_sent_id", rd_sent_id)
-        if prompt_type == 1 or src_context_size == 0:
-            en_sent = data["doc"][rd_doc_id]["en"][rd_sent_id]
-            tgt_lang_sent =  data["doc"][rd_doc_id][tgt_lang][rd_sent_id]
-            
-        if prompt_type == 2:
-            en_shot_context = select_context(k, data["doc"][rd_doc_id]["en"], rd_sent_id, sep_token, prompt_type) # context_size = K
-            en_sent = en_shot_context + break_token + data["doc"][rd_doc_id]["en"][rd_sent_id] 
-            tgt_lang_sent = data["doc"][rd_doc_id][tgt_lang][rd_sent_id]
-
-        if prompt_type == 3:
-            en_shot_context = select_context(k, data["doc"][rd_doc_id]["en"], rd_sent_id, sep_token, prompt_type) # context_size = K
-            tgt_shot_context = select_context(k, data["doc"][rd_doc_id][tgt_lang], rd_sent_id, sep_token, prompt_type)
-            en_sent = en_shot_context + break_token + data["doc"][rd_doc_id]["en"][rd_sent_id] 
-            tgt_lang_sent = tgt_shot_context + break_token + data["doc"][rd_doc_id][tgt_lang][rd_sent_id]
-        
-        k_shot = en_sent + after_ip + tgt_lang_sent + sep_token
-        _few_shots += k_shot
-    
-    return _few_shots
 
 def select_context(context_size, doc_input, current_idx, sep_token, prompt_type):
     #context_list = []
@@ -168,9 +117,8 @@ def sample_example(criteria, original_data, original_indices, n_samples):
 
     return sampled_indices
 
-def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length):
+def preprocess_function_contrapro(data_path, model_checkpoint, src_context_size, api):
 
-    target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
     sep_token = "\n"
 
     # Take txt file and choose one example out of duplications and store in src_list # 12011
@@ -190,10 +138,9 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
         json_data = json.load(file)
 
     print ("json file length", len(json_data))
-    tgt_list_json = [item['ref segment'] for item in json_data]
+    #tgt_list_json = [item['ref segment'] for item in json_data]
     src_list_json = [item['src segment'] for item in json_data]
     ante_list = [item['ante distance'] for item in json_data]
-    print ("tgt", len(tgt_list_json))
 
     # take intercection of src in text file and src in json file # 11084
     src_intersection_before_sort = list(set(src_list).intersection(src_list_json))
@@ -204,7 +151,7 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
     # take intersection of antecedent and target in from json file ####################################################################
     ante_intersection = [ante_list[i] for i in indices_in_json_list]
     src_intersection = [src_list_json[i] for i in indices_in_json_list]
-    tgt_intersection = [tgt_list_json[i] for i in indices_in_json_list]
+    #tgt_intersection = [tgt_list_json[i] for i in indices_in_json_list]
 
     # Sampling sentences (where antecedent < 2)
     # 1. pop ante 0 : take ante non-zero indices and apply src and tgt 
@@ -214,16 +161,16 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
     print ("ante_intersec_non_zero", len(ante_intersec_non_zero)) # 8828
     src_intersec_non_zero_ante = [src_intersection[i] for i in indices_intersec_non_zero_ante]
     print ("src_intersec3", len(src_intersec_non_zero_ante)) # 8828
-    tgt_intersec_non_zero_ante = [tgt_intersection[i] for i in indices_intersec_non_zero_ante]
+    #tgt_intersec_non_zero_ante = [tgt_intersection[i] for i in indices_intersec_non_zero_ante]
 
     # subsample 1000 examples indices from antecedent distance = 1  
     sampled_indices = sample_example(criteria="ante==1", original_data=ante_intersec_non_zero, original_indices= [i for i, item in enumerate(ante_intersec_non_zero)], n_samples=1000) # sample 1 (take 1000 of antecedent distance 1)
     sampled_indices = sample_example(criteria="ante==2", original_data=[ante_intersec_non_zero[i] for i in sampled_indices], original_indices= sampled_indices, n_samples=1000) # sample 2 (take 1000 of antecedent distance 2)
     # Apply sampled indices for src and tgt
     sampled_src_intersec = [src_intersec_non_zero_ante[i] for i in sampled_indices]
-    sampled_tgt_intersec = [tgt_intersec_non_zero_ante[i] for i in sampled_indices]
+    #sampled_tgt_intersec = [tgt_intersec_non_zero_ante[i] for i in sampled_indices]
     src_intersec = sampled_src_intersec # sampled
-    tgt_intersec = sampled_tgt_intersec # sammpled
+    #tgt_intersec = sampled_tgt_intersec # sammpled
     
     # Take context.txt file and choose one example out of duplications and store in context_list #
     if src_context_size != 0:
@@ -234,81 +181,24 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
 
         with open(f'{data_path}/contrapro.context.en' , 'r') as file:
             context_list = [line.strip() for line in file]
-            
-            #context_intersec = [context_list[i] for i in indices_in_src_list]
-            #print ("context_list", len(context_list)) # 36031
-            
-            """
-            ### cancelled: Preceding contexts concatenation ####
-            if src_context_size != 0 and src_context_size != "1-ante":   
-                print ("Preceding contexts concatenation") # shouldn't print out this
-                line_counter = 0     
-                for line in file:
-                    if line_counter % (3*src_context_size) == 0:
-                        context = ''
-            
-                    if line_counter % (3*src_context_size) <= src_context_size - 1:
-                        context += line
-                        if line != '':
-                            print ("septoken added")
-                            context += sep_token
-                    
-                    if line_counter % (3*src_context_size) == src_context_size - 1:
-                        print ("septoken added2")
-                        context += sep_token
-                        contexts.append(context)
-                    
-                    line_counter += 1
-                context_intersec = [context_list[i] for i in indices_in_src_list]
-                src_intersec = src_intersection
-                tgt_intersec = tgt_intersection
-            """
-    
+
         contexts = []
         print ("n_sent", n_sent) # 12011
-        print (max_c)
         
         # Choose only one chunk of context out of three chunks repitition 
         #for i, alpha in zip(range(n_sent_intersec)[:5], ante_intersec[:5]):
         for i in range(n_sent): # 12011
             #print (i)
-            print (i*3*max_c, i*3*max_c+max_c)
             sentence_context = context_list[i*3*max_c:i*3*max_c+max_c]
-            #sentence_context = sep_token.join(context_list[i*3*max_c:i*3*max_c+max_c])
-            #if sentence_context != "":
-                #sentence_context += sep_token
-            #print (alpha)
-            #print (sentence_context)
-            #ante_context = sentence_context[-alpha]
             contexts.append(sentence_context)
 
         print ("contexts length", len(contexts)) # 12011   
         context_chunks_intersection = [contexts[i] for i in indices_in_src_list] # 11084
         print ("context_chunks_intersection", len(context_chunks_intersection))
-
-        # # Sampling sentences (where antecedent < 2)
-        # # 1. pop ante 0 : take ante non-zero indices and apply src and tgt 
-        # print ("ante_intersec", len(ante_intersection)) # 11085
-        # indices_intersec_non_zero_ante = [i for i, ante in enumerate(ante_intersection) if ante != 0]
-        # ante_intersec_non_zero = [ante_intersection[i] for i in indices_intersec_non_zero_ante]
-        # print ("ante_intersec_non_zero", len(ante_intersec_non_zero)) # 8828
-        # src_intersec_non_zero_ante = [src_intersection[i] for i in indices_intersec_non_zero_ante]
-        # print ("src_intersec3", len(src_intersec_non_zero_ante)) # 8828
-        # tgt_intersec_non_zero_ante = [tgt_intersection[i] for i in indices_intersec_non_zero_ante]
         
         # Sampling sentences (where antecedent < 2) for context 
         # 1. pop ante 0 : take ante non-zero indices and apply context
         context_chunks_intersec_non_zero_ante = [context_chunks_intersection[i] for i in indices_intersec_non_zero_ante]
-        
-        # # subsample 1000 examples indices from antecedent distance = 1  
-        # sampled_indices = sample_example(criteria="ante==1", original_data=ante_intersec_non_zero, original_indices= [i for i, item in enumerate(ante_intersec_non_zero)], n_samples=1000) # sample 1 (take 1000 of antecedent distance 1)
-        # sampled_indices = sample_example(criteria="ante==2", original_data=[ante_intersec_non_zero[i] for i in sampled_indices], original_indices= sampled_indices, n_samples=1000) # sample 2 (take 1000 of antecedent distance 2)
-        # # Apply sampled indices for src and tgt
-        # sampled_src_intersec = [src_intersec_non_zero_ante[i] for i in sampled_indices]
-        # sampled_tgt_intersec = [tgt_intersec_non_zero_ante[i] for i in sampled_indices]
-        # print (sampled_context_chunks_intersec[:5])
-        # src_intersec = sampled_src_intersec # sampled
-        # tgt_intersec = sampled_tgt_intersec # sammpled
         
         # Apply sampled indices for context and antecedent
         sampled_context_chunks_intersec = [context_chunks_intersec_non_zero_ante[i] for i in sampled_indices]
@@ -316,63 +206,66 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
         sampled_ante_intersec = [ante_intersec_non_zero[i] for i in sampled_indices]
         context_chunks_intersec = sampled_context_chunks_intersec # sampled
         ante_intersec_non_zero = sampled_ante_intersec # sampled
-        print ("after all sampling", len(src_intersec), len(tgt_intersec), len(context_chunks_intersec), len(ante_intersec_non_zero)) # 3290, 3290, 3290, 3290 for sample ante1,  3132 for sample 1+ sample2 
+        print ("after all sampling", len(src_intersec), len(context_chunks_intersec), len(ante_intersec_non_zero)) # 3290, 3290, 3290, 3290 for sample ante1,  3132 for sample 1+ sample2 
         
         # Context with Antedecedent Distance concatenation
         context_intersec = []
+        ante_intersec = []
         if src_context_size == "1-ante":
             # Version 1: Choose only an antecedent sentence as a context sentence
             for sent_context, alpha in zip(context_chunks_intersec, ante_intersec_non_zero):
                 ante_context = sent_context[-alpha]
                 # if alpha != 0: 
-                ante_context += sep_token
                 context_intersec.append(ante_context)
 
         elif src_context_size == "ante": 
             # Version 2: Choose preceding sentences after antecedent as context sentences
             print ("Version 2!")
             for sent_context, alpha in zip(context_chunks_intersec, ante_intersec_non_zero):
-                ante_contexts = sep_token.join(sent_context[-alpha:])
-                ante_contexts += sep_token
+                ante_contexts = " ".join(sent_context[-alpha:])
                 context_intersec.append(ante_contexts)
 
-        else: 
+        else: ##### Summarization target ####
             # (Version 3:) Choose all preceding sentences as context sentences
-            for sent_context in context_chunks_intersec:
-                print ("check sent_context", sent_context)
-                prec_contexts = sep_token.join(sent_context)
-                prec_contexts += sep_token
-                context_intersec.append(prec_contexts)
 
+            for sent_context, alpha in zip(context_chunks_intersec, ante_intersec_non_zero):
+                #print ("check sent_context", sent_context)
+                prec_contexts = " ".join(sent_context)
+                context_intersec.append(prec_contexts)
+                #print ("alpha", alpha)
+                if alpha <= len(sent_context):
+                    ante_context = sent_context[-alpha]
+                else:
+                    ante_context = "Antecedent lies outside the context window"
+                ante_intersec.append(ante_context)
             
     ############ common ###################
     inputs = []
     labels = []
     # Context for source sentence
-    if prompt_type == 1 and src_context_size != 0 :
-        context_inst = f"Given context:{sep_token}" 
+
+    if "llama" in model_checkpoint or "Llama" in model_checkpoint:
+        summ_inst = f"Summarize context:{sep_token}" 
+
+        print (len(context_intersec), len(ante_intersec)) # 3132 for sample 1 + sample 2
+        print ("####################", model_checkpoint)
+        
+        for ip, tgt in zip(context_intersec, ante_intersec):
+            concat_input = "### User:\n" + summ_inst + ip + "\n\n### Assistant:\n"            
+            inputs.append(concat_input)
+            labels.append(tgt)
     
     else: 
-        context_inst = ""
-
-    if src_context_size != 0:
-        print (len(src_intersec), len(tgt_intersec), len(context_intersec)) # 8828 for nonzero ante # 3290 for 1000 samples for ante = 1 + nonzero
-        
-        for ip, tgt, _context in zip(src_intersec, tgt_intersec, context_intersec):
-            concat_input = "### User:\n" + context_inst + _context + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
+        print (len(context_intersec), len(ante_intersec)) # 3132 for sample 1 + sample 2
+        print ("####################", model_checkpoint)
+        for ip, tgt in zip(context_intersec, ante_intersec):
+            concat_input =  ip     
             inputs.append(concat_input)
             labels.append(tgt)
 
-    else:
-        print (len(src_intersec), len(tgt_intersec)) # 3132 for sample 1 + sample 2
-        for ip, tgt in zip(src_intersec, tgt_intersec):
-            concat_input = "### User:\n" + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
-            inputs.append(concat_input)
-            labels.append(tgt)
-    sources = src_intersec
-    few_shots = ""
+    sources = context_intersec
 
-    return inputs, labels, sources, few_shots
+    return inputs, labels, sources
 
 
 def generate_prompt_bsd(data, tgt_lang, k):
