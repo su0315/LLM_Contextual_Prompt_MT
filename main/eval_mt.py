@@ -106,7 +106,7 @@ def read_data(
     prompt_type, 
     max_length, 
     tokenizer,
-    summarized_contexs,
+    summarized_contexts,
     cfg_name
     ):
 
@@ -123,26 +123,26 @@ def read_data(
         else:
             inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
         labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
-        output_dir = f"./results/ted/en-{tgt_lang}/{cfg_name}/"
+        output_dir = f"/mnt/data-poseidon/sumire/thesis/running/ted/en-{tgt_lang}/{cfg_name}/"
 
     elif "BSD-master" in data_path:
         data_files = {"train":data_path+"train.json","test":data_path+"test.json"}
         dataset = load_dataset("json", data_files=data_files)
-        few_shots = generate_prompt_bsd(dataset["train"], tgt_lang, k)
+        few_shots = generate_prompt_bsd(dataset["train"], src_context_size, tgt_lang, model_checkpoint, k, prompt_type)
         sources = np.asarray([sent['en_sentence'] for doc in dataset["test"]["conversation"] for sent in doc])
         if api is True:
-            inputs = preprocess_function_bsd(tgt_lang, api, few_shots, max_length, tokenizer, dataset["test"])
-        
+            inputs = preprocess_function_bsd(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
         else:
-            inputs = preprocess_function_bsd(tgt_lang, api, few_shots, max_length, tokenizer, dataset["test"]).input_ids
+            inputs = preprocess_function_bsd(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
         #labels = preprocess_function_bsd(tgt_lang, prompt, max_length, tokenizer, dataset["test"]).labels
         labels = np.asarray([sent['ja_sentence'] for doc in dataset["test"]["conversation"] for sent in doc])
-        output_dir = f"./results/BSD/en-{tgt_lang}/{cfg_name}/"
+        output_dir = f"/mnt/data-poseidon/sumire/thesis/running/BSD/en-{tgt_lang}/{cfg_name}/"
 
     if "ContraPro" in data_path:
         if api is True:
-            inputs, labels, sources, few_shots = preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length, summarized_contexs)
-            output_dir = f"./results/contrapro/en-{tgt_lang}/{cfg_name}/"
+            inputs, labels, sources, few_shots = preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length, summarized_contexts)
+            output_dir = f"/mnt/data-poseidon/sumire/thesis/running/contrapro/en-{tgt_lang}/{cfg_name}/"
+            print (output_dir)
             labels = np.asarray(labels)
             sources = np.asarray(sources)
 
@@ -328,7 +328,7 @@ def main():
         prompt_type, 
         max_length, 
         tokenizer,
-        summarized_contexs,
+        summarized_contexts,
         cfg_name
         )
 

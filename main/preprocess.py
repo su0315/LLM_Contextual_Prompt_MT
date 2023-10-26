@@ -226,10 +226,30 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
     tgt_intersec = sampled_tgt_intersec # sammpled
     
     # Take context.txt file and choose one example out of duplications and store in context_list #
-    if summarized_contexs =="distilroberta":
-        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilbert-ctpro-{src_context_size}-1"
-        with open(f'{context_dir}/summarized_contexts.en' , 'r') as file:
-            context_intersec = [line.strip() for line in file]
+    if summarized_contexs =="distilroberta" and type(src_context_size) != str:
+        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-{src_context_size+1}-1"
+        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
+            context_intersec = [line for line in file]
+    elif summarized_contexs =="distilroberta" and type(src_context_size) == "ante-1":
+        print ("ante-1")
+        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-ante-1"
+        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
+            context_intersec = [line for line in file]
+    elif summarized_contexs =="distilroberta-2":
+        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to3-1"
+        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to3-1")
+        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
+            context_intersec = [line for line in file]
+    elif summarized_contexs =="distilroberta-3":
+        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to4-1"
+        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to4-1")
+        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
+            context_intersec = [line for line in file]
+    elif summarized_contexs =="distilroberta-4":
+        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to5-1"
+        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to4-1")
+        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
+            context_intersec = [line for line in file]
     
     elif src_context_size != 0:
         if src_context_size == "ante" or src_context_size == "1-ante":
@@ -355,28 +375,113 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
     return inputs, labels, sources, few_shots
 
 
-def generate_prompt_bsd(data, tgt_lang, k):
+def generate_prompt_bsd(data, src_context_size, tgt_lang, model_checkpoint, k, prompt_type):
     #K-shot Prompt
 
-    _prompt = ""
+    target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
+
+    break_token = "<#b#>"
+
+    #K-shot Prompt
+    if "xglm" in model_checkpoint:
+        after_ip = " = "
+        sep_token = "</s>"
+        _few_shots = ""
+
+    elif "llama" or "Llama" in model_checkpoint:
+        after_ip = " => "
+        sep_token = "\n"
+        _few_shots = f"""Translate English to {target_language[tgt_lang]}:{sep_token}"""
     
-    for sent in data["conversation"][0][:k]:
-        en_sent = sent["en_sentence"]
-        tgt_lang_sent = sent[f"{tgt_lang}_sentence"]
-        k_shot = f"{en_sent} = {tgt_lang_sent} </s> "
-        _prompt += k_shot
+    if k != 0: #### need to correct in case we do few shots
+        for sent in data["conversation"][0][:k]:
+            en_sent = sent["en_sentence"]
+            tgt_lang_sent = sent[f"{tgt_lang}_sentence"]
+            k_shot = f"{en_sent} = {tgt_lang_sent} </s> "
+            _prompt += k_shot
        
-    return _prompt
+    return _few_shots
 
 
-def preprocess_function_bsd(tgt_lang, api, prompt, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
-    inputs =  [prompt + sent['en_sentence'] + ' = ' for doc in data["conversation"] for sent in doc] 
+def preprocess_function_bsd(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
+    
+    break_token = "<#b#>"
+ 
+    if "xglm" in model_checkpoint:
+        after_ip = " = "
+        sep_token = "</s>"
+
+    elif "llama" or "Llama" in model_checkpoint:
+        after_ip = " => "
+        sep_token = "\n"
+    
+    inputs = []
+    # Context for source sentence
+    if prompt_type == 1:
+        context_inst = f"Given context:{sep_token}" 
+    elif prompt_type == 2:
+        context_inst = ""
+
+    if src_context_size >= 1:
+        #bsd: inputs =  [prompt + sent['en_sentence'] + ' = ' for doc in data["conversation"] for sent in doc] 
+        for doc_idx, doc in enumerate(data["conversation"]):
+            doc_input = [sent['en_sentence'] for sent in doc] 
+            
+            for idx, ip in enumerate(doc_input):
+                _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
+
+                if prompt_type==1:
+                    #concat_input = _context + prompt + ip + after_ip 
+                    #inputs.append(concat_input)
+                    if api is True:
+        
+                        concat_input = "### User:\n" + context_inst + _context + few_shots + ip + "\n\n### Assistant:\n"
+                    else:
+                        concat_input = context_inst + _context + few_shots + ip + after_ip # need to check when context size == 0, there are no two times sep_token 
+
+                    
+                elif prompt_type ==2:
+                    concat_input = few_shots + _context + break_token + ip + after_ip ### Put the special break token before input
+
+                elif prompt_type == 3:
+                    if _context != "":
+                        _context += break_token  # break token only when context exists
+                    
+                    if api is True:
+                        concat_input = "### User:\n" + few_shots + _context + ip + "\n\n### Assistant:\n"
+
+                    else:
+                        concat_input = few_shots + _context + ip + after_ip # break token before ip or not ?
+
+                inputs.append(concat_input)
+
+    else:
+        if "mbart" in model_checkpoint:
+            inputs = [sent['en_sentence'] + ' = ' for doc in data["conversation"] for sent in doc] 
+            tokenizer.src_lang = "en_XX"
+
+        else:
+            #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
+
+            if api:
+                inputs = ["### User:\n" + few_shots + sent['en_sentence'] + "\n\n### Assistant:\n" for doc in data["conversation"] for sent in doc] 
+            else:
+                inputs = [few_shots + sent['en_sentence'] + after_ip for doc in data["conversation"] for sent in doc]  # When6 without context prompt 
+            
+        
     
     if api is True:
         model_inputs = inputs
+
     else:
         model_inputs = tokenizer(
-            inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True)
-        
+            inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
+    
+    print ("INPUT EXAMPLE 0")
+    print (inputs[0])
+    print ("INPUT EXAMPLE 1")
+    print (inputs[1])
+    
     return model_inputs
+
 

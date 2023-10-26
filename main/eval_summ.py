@@ -34,7 +34,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
     parser.add_argument("--generic.api", type=bool, default=False, metavar="FILE", help="Whether using text generation api or not")
     parser.add_argument("--generic.device",type=int, default=6,  help="The GPU device id")
-    
+    parser.add_argument("--generic.num_summary_sentences",  type=int, default=1, help="The num_summary_sentences")
     return parser
 
 
@@ -78,7 +78,7 @@ def read_data(
 
     if "ContraPro" in data_path:
         inputs, labels, sources = preprocess_function_contrapro(data_path, model_checkpoint, src_context_size, api)
-        output_dir = f"./results/summarization/contrapro/{cfg_name}/"
+        output_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/contrapro/{cfg_name}/"
         labels = np.asarray(labels)
         sources = np.asarray(sources)
 
@@ -96,8 +96,8 @@ def evaluate_summarization(
     sources,
     inputs, 
     labels, 
+    num_summary_sentences,
     output_dir,
-
     ):
 
     all_preds = []
@@ -108,7 +108,7 @@ def evaluate_summarization(
     # Generate
     
     for inp, label, src in zip(inputs, labels, sources): 
-        pred = model.predict(inp, raw_scores=False, num_summary_sentences=1)
+        pred = model.predict(inp, raw_scores=False, num_summary_sentences=num_summary_sentences)
         
         all_preds.append(pred)
         all_labels.append(label)
@@ -141,7 +141,7 @@ def evaluate_summarization(
         for metric, score in zip(["rouge"], [rouge_score]):
             wf.write(f"{metric}: {score}\n") 
 
-    with open(output_dir+'/summarized_contexs.txt','a', encoding='utf8') as wf:
+    with open(output_dir+'/summarized_contexts.txt','a', encoding='utf8') as wf:
         for pred in decoded_preds:
             wf.write(pred.strip()+'\n')
     
@@ -157,6 +157,7 @@ def main():
     cfg_name = cfg.generic.cfg_name
     api = cfg.generic.api
     device = torch.device(f'cuda:{cfg.generic.device}' if torch.cuda.is_available() else 'cpu')
+    num_summary_sentences = cfg.generic.num_summary_sentences
     
     # Initialize Model
     model = initialize_model(model_checkpoint, api, device)
@@ -195,6 +196,7 @@ def main():
         sources,
         inputs, 
         labels, 
+        num_summary_sentences,
         output_dir,
         )
 
