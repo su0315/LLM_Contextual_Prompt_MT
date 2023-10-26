@@ -1,7 +1,0 @@
-data_path: /mnt/data-poseidon/sumire/repos/ContraPro/context_7
-src_context_size: 7
-api: True
-model_checkpoint: /mnt/data-poseidon/sumire/repos/transformersum/ckpt/distilbert/epoch=3.ckpt
-batch_size: 1
-cfg_name: transforemersum-distilbert-ctpro-8-1
-device: cuda:6

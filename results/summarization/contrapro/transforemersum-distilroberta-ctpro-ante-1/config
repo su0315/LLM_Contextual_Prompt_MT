@@ -1,7 +1,0 @@
-data_path: /mnt/data-poseidon/sumire/repos/ContraPro/context_26
-src_context_size: ante
-api: True
-model_checkpoint: /mnt/data-poseidon/sumire/repos/transformersum/ckpt/distilroberta/epoch=3.ckpt
-batch_size: 1
-cfg_name: transforemersum-distilroberta-ctpro-ante-1
-device: cuda:6

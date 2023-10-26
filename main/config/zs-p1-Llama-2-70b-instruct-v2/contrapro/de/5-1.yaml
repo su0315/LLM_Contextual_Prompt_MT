@@ -1,4 +1,3 @@
-main/config/zs-p1-Llama-2-70b-instruct-v2/contrapro/de/5-1.yaml
 generic:
   data_path: /mnt/data-poseidon/sumire/repos/ContraPro/context_4
   #src_lang: en

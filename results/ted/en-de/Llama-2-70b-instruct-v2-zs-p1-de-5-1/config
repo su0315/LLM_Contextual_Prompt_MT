@@ -1,0 +1,14 @@
+tgt_lang: de
+data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
+src_context_size: 4
+api: True
+model_checkpoint: upstage/Llama-2-70b-instruct-v2
+batch_size: 4
+k: 0
+prompt_type: 1
+max_new_tokens: 1024
+max_length: 1024
+cfg_name: Llama-2-70b-instruct-v2-zs-p1-de-5-1
+prompt+source:
+ Translate English to German:
+

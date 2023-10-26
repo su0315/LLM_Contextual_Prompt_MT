@@ -1,5 +1,6 @@
 
 generic:
+  summarized_contexts : distilroberta
   data_path: /mnt/data-poseidon/sumire/repos/ContraPro/context_3
   #src_lang: en
   tgt_lang: de
@@ -17,4 +18,4 @@ generic:
   max_new_tokens : 1024 #64 #128 
   max_length : 1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
   api: True
-  cfg_name : Llama-2-70b-instruct-v2-ctpro-zs-p1-de-4-1
+  cfg_name : Llama-2-70b-instruct-v2-ctpro-zs-p1-sum-de-4-1

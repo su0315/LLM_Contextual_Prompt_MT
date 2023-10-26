@@ -1,1 +1,0 @@
-rouge: {'rouge1': 0.4571, 'rouge2': 0.4054, 'rougeL': 0.4534, 'rougeLsum': 0.4534}
