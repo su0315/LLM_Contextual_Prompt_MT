@@ -75,8 +75,15 @@ def generate_parallel_df(parallel_lang_list, data_dir, data_split):
                     data_dir+f"{tgt_lang}-en/IWSLT17.TED.tst2010.{tgt_lang}-en.{lang}.xml",
                     data_dir+f"{tgt_lang}-en/IWSLT17.TED.tst2011.{tgt_lang}-en.{lang}.xml",
                     data_dir+f"{tgt_lang}-en/IWSLT17.TED.tst2012.{tgt_lang}-en.{lang}.xml",
+                    #data_dir+f"{tgt_lang}-en/IWSLT17.TED.tst2013.{tgt_lang}-en.{lang}.xml"
+                ]
+
+            elif data_split == "val":
+                print ("val")
+                xml_filepath_list = [
                     data_dir+f"{tgt_lang}-en/IWSLT17.TED.tst2013.{tgt_lang}-en.{lang}.xml"
                 ]
+
             elif data_split == "test":
                 print("test")
                 xml_filepath_list = [
@@ -91,16 +98,16 @@ def generate_parallel_df(parallel_lang_list, data_dir, data_split):
         parallel_talks_dict = combine_langs_into_one_dict(lang_dicts = parallel_lang_dicts, shared_talk_ids=shared_talk_ids)  
  
 
-        with open(data_dir+f"/{data_split}_ted_{parallel[0]}-{parallel[1]}", "w", encoding="utf-8") as outfile:
+        with open(data_dir+f"{data_split}_ted_{parallel[0]}-{parallel[1]}", "w", encoding="utf-8") as outfile:
             json.dump(parallel_talks_dict, outfile, indent=4, ensure_ascii=False)
     
     # Drop instances of ja/fr/ko/ar/zh not existing in "de" because "de" has less documents than others
-    df_ja = pd.read_json(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{data_split}_ted_en-ja")
-    df_zh = pd.read_json(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{data_split}_ted_en-zh")
-    df_ko = pd.read_json(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{data_split}_ted_en-ko")
-    df_ar = pd.read_json(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{data_split}_ted_en-ar")
-    df_de = pd.read_json(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{data_split}_ted_en-de")
-    df_fr = pd.read_json(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{data_split}_ted_en-fr")
+    df_ja = pd.read_json(data_dir+f"{data_split}_ted_en-ja")
+    df_zh = pd.read_json(data_dir+f"{data_split}_ted_en-zh")
+    df_ko = pd.read_json(data_dir+f"{data_split}_ted_en-ko")
+    df_ar = pd.read_json(data_dir+f"{data_split}_ted_en-ar")
+    df_de = pd.read_json(data_dir+f"{data_split}_ted_en-de")
+    df_fr = pd.read_json(data_dir+f"{data_split}_ted_en-fr")
     
     lang_df_list = [df_ja, df_fr, df_ko, df_ar, df_zh] # Without "de"
     dropped_df_list = []
@@ -135,6 +142,6 @@ def generate_parallel_df(parallel_lang_list, data_dir, data_split):
     # Generate Train or Test Dataset
     for lang, dropped_df in zip (lang_list, dropped_df_list):
         json_object = dropped_df.to_json(force_ascii=False, orient="records", indent = 4)
-        with open(f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/{data_split}_ted_en-{lang}", "w", encoding='utf-8') as outfile:
+        with open(data_dir+f"{data_split}_ted_en-{lang}", "w", encoding='utf-8') as outfile:
             outfile.write(json_object)
 
