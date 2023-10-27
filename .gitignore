@@ -169,7 +169,7 @@ ko-en/
 zh-en/
 multilingual_talks_dict
 .gitignore
-/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf
+/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
 data/iwslt_hf/ted_en-ar
 data/iwslt_hf/ted_en-de
 data/iwslt_hf/ted_en-fr
@@ -199,3 +199,5 @@ data/iwslt_hf/old_generated_data/ted_en-zh
 
 main/tokenizer.py
 notebook/api.ipynb
+data/iwslt_hf/
+data/mulda_tagged
