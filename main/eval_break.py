@@ -173,7 +173,7 @@ def evaluate_instances(
 
         # Evaluate
         eval_preds = (np.asarray(preds), np.asarray(labels), np.asarray(sources))
-        result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+        result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
 
 
         with open(output_dir+'/test_score_with_b.txt','w', encoding='utf8') as wf:

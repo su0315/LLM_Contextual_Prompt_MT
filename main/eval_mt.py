@@ -29,6 +29,7 @@ def read_arguments() -> ArgumentParser:
     #parser.add_argument("--cfg", action=ActionConfigFile)
     #parser.add_argument("--generic.src_lang", required=True)
     parser.add_argument("--generic.data_path", required=True, metavar="FILE", help="path to model file for bsd is '/home/sumire/discourse_context_mt/data/BSD-master/'")
+    parser.add_argument("--generic.do_train", type=bool, required=False, default =False,  help="if you do evaluate train data")
     parser.add_argument("--generic.src_context", default="src", help="the number of the target context sentence for each input")
     #parser.add_argument("--generic.dropout", type=float, choices=np.arange(0.0, 1.0, 0.1), default=0, help="the coword dropout rate")
     #parser.add_argument("--generic.speaker", type=bool, default=False)
@@ -43,7 +44,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.max_length", type=int, default=0, help="max_length for input and labels")
     parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
     parser.add_argument("--generic.api", type=bool, default=False, metavar="FILE", help="Whether using text generation api or not")
-    
+    parser.add_argument('--generic.metrics',  type=str, help = "Comma-separated list of strings", default= "sacrebleu,comet", required=False)
     return parser
 
 
@@ -107,24 +108,50 @@ def read_data(
     max_length, 
     tokenizer,
     summarized_contexts,
+    do_train,
     cfg_name
     ):
 
     if "iwslt_hf" in data_path:
-        data_files = { "train": f"{data_path}train_ted_en-{tgt_lang}",  "test": f"{data_path}test_ted_en-{tgt_lang}"}
+        data_files = { "train": f"{data_path}train_ted_en-{tgt_lang}",  "val": f"{data_path}val_ted_en-{tgt_lang}",  "test": f"{data_path}test_ted_en-{tgt_lang}"}
         dataset = load_dataset("json", data_files=data_files)
+        if do_train:
+            train_few_shots = generate_few_shots(dataset["train"], src_context_size, tgt_lang, model_checkpoint, k, prompt_type)
+            train_sources = np.asarray([sent for doc in dataset["train"]["doc"] for sent in doc["en"]])
+            train_labels = np.asarray([sent for doc in dataset["train"]["doc"] for sent in doc[tgt_lang]])
+            #val_few_shots = generate_few_shots(dataset["val"], src_context_size, tgt_lang, model_checkpoint, k, prompt_type)
+            val_sources = np.asarray([sent for doc in dataset["val"]["doc"] for sent in doc["en"]])
+            val_labels = np.asarray([sent for doc in dataset["val"]["doc"] for sent in doc[tgt_lang]])
+            
+            few_shots = train_few_shots
+            sources = np.append(train_sources, val_sources)
+            labels = np.append(train_labels, val_labels)
+            output_dir = f"/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-{tgt_lang}/{cfg_name}/"
+        else:
+            few_shots = generate_few_shots(dataset["test"], src_context_size, tgt_lang, model_checkpoint, k, prompt_type)
+            sources = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc["en"]])
+            labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
+            output_dir = f"/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/test/en-{tgt_lang}/{cfg_name}/"
+        
         print ("The num of sent in train set before preprocess", len([sent for doc in dataset["train"]["doc"] for sent in doc["en"]]))
         print ("The num of sent in test set before preprocess", len([sent for doc in dataset["test"]["doc"] for sent in doc["en"]]))
-        few_shots = generate_few_shots(dataset["train"], src_context_size, tgt_lang, model_checkpoint, k, prompt_type)
-        sources = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc["en"]])
 
         if api is True:
-            inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
+            if do_train:
+                train_inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"])
+                val_inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["val"])
+                inputs = train_inputs + val_inputs
+            else:
+                inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
+        
         else:
-            inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
-        labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
-        output_dir = f"/mnt/data-poseidon/sumire/thesis/running/ted/en-{tgt_lang}/{cfg_name}/"
-
+            if do_train:
+                train_inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"]).input_ids
+                val_inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, val_few_shots, prompt_type, max_length, tokenizer, dataset["val"]).input_ids
+                inputs = train_inputs + val_inputs
+            else:
+                inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
+        
     elif "BSD-master" in data_path:
         data_files = {"train":data_path+"train.json","test":data_path+"test.json"}
         dataset = load_dataset("json", data_files=data_files)
@@ -146,16 +173,8 @@ def read_data(
             labels = np.asarray(labels)
             sources = np.asarray(sources)
 
-            """
-            # test data 20 %
-            test_split = int(len(labels)*0.2)
-            inputs = inputs[:test_split]
-            sources = sources[:test_split]
-            labels = labels[:test_split]
-            """
         else:
             print ("preprocess not defined")
-
 
     return few_shots, sources, inputs, labels, output_dir
 
@@ -173,71 +192,116 @@ def evaluate_mt(
     inputs, 
     labels, 
     output_dir,
-    prompt_type
+    prompt_type, 
+    do_train,
+    metrics
     ):
-
-    results = []
-    bleu_sum = 0
-    comet_sum = 0
-    gen_len_sum = 0
-    num_batches = 0
 
     # Define mBART language code 
     lang_to_code = {"ja": "ja_XX", "ar":"ar_AR", "de":"de_DE", "fr":"fr_XX","ko":"ko_KR", "zh": "zh_CN"}
 
     if api is True: # No batch, directly input string to the model
-        all_preds = []
-        all_labels = []
-        all_srcs = []
-        print ("Hi")
+        if do_train: # Predict and eval for each instance
+            for inp, label, src in zip(inputs, labels, sources): 
+                pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
+                with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
+                    wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
+                    print ("Hi3")
 
-        # Generate
-        for inp, label, src in zip(inputs, labels, sources): 
-            print ("Hi2")
-            num_batches += 1
-            print ("INP", inp)
-            print ("LABEL", label)
-            pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
+                with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
+                    wf.write(label.strip()+'\n')
+
+                with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
+                    wf.write(src.strip()+'\n')
+
+                with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
+                    wf.write(inp.strip()+'\n')
+
+                # Eval
+                eval_pred = ([pred], [label], [src])
+                result, decoded_pred, decoded_label, decoded_input_id = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_pred, prompt_type)
+                print (decoded_pred)
+
+                with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
+                    for i in decoded_pred:
+                        wf.write(i.strip()+'\n')
+
+                for metric in metrics:
+                    with open(output_dir+f'/{metric}_each_score.txt','a', encoding='utf8') as wf:
+                        wf.write(f"{result[metric]}\n") 
+
+            # Open each_sent_score file and calculate the average
+            all_scores = {}
+            for metric in metrics:
+                print (metric)
+                sum_scores = 0
+                
+                with open(output_dir+f'/{metric}_each_score.txt') as rf:
+                    for each_score in rf:
+                        sum_scores += float(each_score.strip())
+                        score = sum_scores / len(sources)
+                        all_scores[metric]= score
+            print (all_scores)
             
-            all_preds.append(pred)
-            all_labels.append(label)
-            all_srcs.append(src)
-           
-
-            with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
-                wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
-                print ("Hi3")
-
-            with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
-                wf.write(label.strip()+'\n')
-
-            with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
-                wf.write(src.strip()+'\n')
-
-            with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
-                wf.write(inp.strip()+'\n')
-        
-        print ("Hi4")
+            # Write the averaged score
+            with open(output_dir+'/test_score.txt','a', encoding='utf8') as wf:
+                for metric in metrics:  
+                    wf.write(f"{metric}: {all_scores[metric]}\n") 
 
 
-        # Evaluate
-        eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
-        result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
-        print (decoded_preds)
+        else: # Only Test, soPredict everything first and eval in the end once
+            all_preds = []
+            all_labels = []
+            all_srcs = []
+            print ("Hi")
 
-        with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
+            # Generate
+            for inp, label, src in zip(inputs, labels, sources): 
+                print ("Hi2")
+                
+                print ("INP", inp)
+                print ("LABEL", label)
+                pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
+                
+                all_preds.append(pred)
+                all_labels.append(label)
+                all_srcs.append(src)
             
-            bleu_score = result["bleu"]
-            comet_score = result["comet"]
-            gen_len_score = result["gen_len"]
 
-            for metric, score in zip(["bleu", "comet", "gen_len"], [bleu_score, comet_score, gen_len_score]):
-                wf.write(f"{metric}: {score}\n") 
+                with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
+                    wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
+                    print ("Hi3")
 
-        with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
-            for pred in decoded_preds:
-                wf.write(pred.strip()+'\n')
-        
+                with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
+                    wf.write(label.strip()+'\n')
+
+                with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
+                    wf.write(src.strip()+'\n')
+
+                with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
+                    wf.write(inp.strip()+'\n')
+            
+            print ("Hi4")
+
+
+            # Evaluate
+            eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
+            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+            print (decoded_preds)
+
+            with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
+                
+                bleu_score = result["bleu"]
+                comet_score = result["comet"]
+                gen_len_score = result["gen_len"]
+
+                for metric, score in zip(["bleu", "comet", "gen_len"], [bleu_score, comet_score, gen_len_score]):
+                    wf.write(f"{metric}: {score}\n") 
+
+            with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
+                for pred in decoded_preds:
+                    wf.write(pred.strip()+'\n')
+            
 
     else: 
         model.to(device)    
@@ -263,7 +327,7 @@ def evaluate_mt(
             
             # Evaluate
             eval_preds = (batch_output.cpu(), batch_label, batch_source)# To convert to numpy in evaluate function
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
         
             # Write results to text file
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
@@ -312,7 +376,10 @@ def main():
     max_length = cfg.generic.max_length
     cfg_name = cfg.generic.cfg_name
     api = cfg.generic.api
+    do_train = cfg.generic.do_train
+    metrics = cfg.generic.metrics.split(",")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
     
     # Initialize Model
     model, tokenizer = initialize_model(model_checkpoint, api)
@@ -329,6 +396,7 @@ def main():
         max_length, 
         tokenizer,
         summarized_contexts,
+        do_train,
         cfg_name
         )
 
@@ -368,7 +436,9 @@ def main():
         inputs, 
         labels, 
         output_dir,
-        prompt_type
+        prompt_type,
+        do_train,
+        metrics
         )
     print ("Evaluation Successful")
 

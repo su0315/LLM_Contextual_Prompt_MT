@@ -72,7 +72,8 @@ def compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokeni
     
     decoded_preds, decoded_labels, decoded_input_ids = postprocess_text(decoded_preds, decoded_labels, decoded_input_ids,  model_checkpoint, api, prompt_type)
     
-
+    result = {}
+    
     for metric in metrics:
         if metric == "sacrebleu":
             print ("BLEU-preds", decoded_preds, "BLEU-references", decoded_labels)
@@ -87,7 +88,7 @@ def compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokeni
                 bleu = metric1.compute(predictions=decoded_preds, references=decoded_labels, tokenize='flores101')
             else: 
                 bleu = metric1.compute(predictions=decoded_preds, references=decoded_labels)
-            result = {metric: bleu["score"]}
+            result[metric] =  bleu["score"]
 
         if metric == "comet":
             print ("COMET-preds", decoded_preds, "COMET-references", decoded_labels)
