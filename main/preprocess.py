@@ -246,11 +246,10 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
         with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
             context_intersec = [line for line in file]
     elif summarized_contexs =="distilroberta-4":
-        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to5-1"
-        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to4-1")
+        context_dir = f"/mnt/data-poseidon/sumire/thesis/summ_rouge/{src_context_size+1}-1to5-1/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to5-1"
+        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to5-1")
         with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
             context_intersec = [line for line in file]
-    
     elif src_context_size != 0:
         if src_context_size == "ante" or src_context_size == "1-ante":
             max_c = 26 # max context size (max antecedent distant)

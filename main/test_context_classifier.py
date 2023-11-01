@@ -178,17 +178,25 @@ def main():
 
 if __name__ == "__main__":
     main()
-"""
+
 # train-eval
 file1_path="/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-1-1/source.txt"
 file2_path = "/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/prompt+source.txt"
 label_path = "/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/comet_binary.txt"
-model_checkpoint = "bert-large-uncased" #"bert-base-cased" # "bert-large-cased"
+model_checkpoint = "bert-base-uncased" #"bert-base-cased" # "bert-large-cased"
 
-model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
+"""
+# Test 
+file1_path="/mnt/data-poseidon/sumire/thesis/2-1/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/source.txt"
+file2_path = "/mnt/data-poseidon/sumire/thesis/2-1/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/prompt+source.txt"
+label_path = "/mnt/data-poseidon/sumire/thesis/2-1/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/comet_binary.txt"
+model_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/test/uncased-3e-5_ep5/" #"bert-large-uncased"#"bert-base-cased" # "bert-large-cased"
+best_model_checkpoint = "checkpoint-5"
+
+model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint+best_model_checkpoint, num_labels=2)
 tokenizer = BertTokenizerFast.from_pretrained(model_checkpoint)
 sep_token = tokenizer.sep_token
-#print ("sep_token:",sep_token, tokenizer.sep_token_id) # sep_token: [SEP] 102
+print ("sep_token:",sep_token, tokenizer.sep_token_id) # sep_token: [SEP] 102
 
 # Define the index where you want to split the dataset
 split_index = 5507  # Replace this with your desired index
@@ -196,14 +204,15 @@ split_index = 5507  # Replace this with your desired index
 # Load and concatenate the data
 instances = concatenate_lines(file1_path, file2_path, sep_token)
 all_labels = read_label(label_path)
-train_dataset, validation_dataset = split_data(split_index, instances, all_labels)
+#train_dataset, validation_dataset = split_data(split_index, instances, all_labels)
 #train_dataset, validation_dataset = shuffle_data(train_dataset, validation_dataset)
 
-train_tokenized_datasets = train_dataset.map(tokenize_function, batched=True)#.select(range(10))
-val_tokenized_datasets = validation_dataset.map(tokenize_function, batched=True)#.select(range(10))
-# test_tokenized_datasets = test_dataset.map(tokenize_function, batched=True)#.select(range(3))
+#train_tokenized_datasets = train_dataset.map(tokenize_function, batched=True).select(range(10))
+#val_tokenized_datasets = validation_dataset.map(tokenize_function, batched=True).select(range(10))
+test_dataset = Dataset.from_dict({"text": instances, 'label':all_labels})
+test_tokenized_datasets = test_dataset.map(tokenize_function, batched=True).select(range(10))
 
-output_dir = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/large-uncased-3e-5_ep5"
+output_dir = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/test/uncased-3e-5_ep5"
 # Trainer
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
@@ -216,10 +225,10 @@ training_args = TrainingArguments(
     weight_decay=0.01,
     evaluation_strategy="epoch",
     save_strategy="epoch", # "no" was bad with load best model
-    save_total_limit = 3,
+    save_total_limit = 2,
     load_best_model_at_end=True,
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
     metric_for_best_model = "f1",
     learning_rate = 3e-5 #4e-5, #5e-5, 2e-5, 3e-5
     )
@@ -227,13 +236,13 @@ training_args = TrainingArguments(
 trainer = Trainer(
     model=model,
     args=training_args,
-    train_dataset=train_tokenized_datasets,
-    eval_dataset= val_tokenized_datasets,
+    #train_dataset=train_tokenized_datasets,
+    #eval_dataset= val_tokenized_datasets,
     compute_metrics=compute_metrics,
     data_collator=data_collator
 )
 
-
+"""
 # Train
 trainer.train()
 tokenizer.save_pretrained(output_dir)
@@ -243,3 +252,18 @@ print ("Training Done")
 model.eval()
 eval_result = trainer.evaluate()
 print (eval_result)
+
+"""
+
+#test
+test_result = trainer.predict(test_tokenized_datasets)##############put test data
+print (test_result)
+
+with open(output_dir+"model_type.txt", "w", encoding="utf-8") as wf:
+    wf.write(f"{model_checkpoint}")
+
+with open(output_dir+"test_score.txt", "w", encoding="utf-8") as wf:
+    wf.write(f"{test_result[-1]}")
+
+with open(output_dir+"prediction.txt", "w", encoding="utf-8") as wf:
+    wf.write(f"{test_result[-0]}")

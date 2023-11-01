@@ -1,0 +1,23 @@
+
+generic:
+  summarized_contexts : distilroberta-4
+  data_path: /mnt/data-poseidon/sumire/repos/ContraPro/context_9
+  do_train: True
+  #src_lang: en
+  tgt_lang: de
+  src_context: 9
+  #tgt_context: 0
+  #dropout: 0.0
+  #speaker: False
+  #random_context: False
+  #tag: False
+  #output_dir: "./results/" # Modify here
+  batch_size: 4
+  model_checkpoint : upstage/Llama-2-70b-instruct-v2
+  k : 0
+  prompt_type: 1
+  max_new_tokens : 1024 #64 #128 
+  max_length : 1024 #1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
+  api: True
+  metrics: comet,sacrebleu
+  cfg_name : Llama-2-70b-instruct-v2-ctpro-zs-p1-sum-de-10-1to5-1
