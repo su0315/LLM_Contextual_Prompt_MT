@@ -12,6 +12,7 @@ from sklearn.metrics import accuracy_score
 from transformers import DataCollatorWithPadding
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
+import os 
 """
 def read_arguments() -> ArgumentParser:
     parser = ArgumentParser(description="Command for evaluating models.")
@@ -40,6 +41,27 @@ def read_arguments() -> ArgumentParser:
     return parser
 """
 
+def extract_context(prompt_path, data_dir):
+    # Read your input file
+    with open(prompt_path, 'r') as file:
+        text = file.read()
+
+    # Use regular expressions to find and extract the sentences after "Given Context"
+    #matches = re.findall(r'Given context:\n(.*?)\nTranslate English to Japanese:', text, re.DOTALL)
+    matches = re.findall(r'Given context:\n(.*?)(?:Translate English to|\Z)', text, re.DOTALL)
+
+    # Process the matches to replace empty strings with ""
+    processed_matches = [match.strip().replace('\n', ', ') if match.strip() else "" for match in matches]
+
+    # Join the processed matches into a single string
+    extracted_text = '\n'.join(processed_matches)
+
+    # Save the extracted text into a new file
+    context_path = data_dir + '/extracted_context.txt'
+    with open(data_dir + '/extracted_context.txt', 'w') as output_file:
+        output_file.write(extracted_text)
+    
+    return context_path
 
 def concatenate_lines(context_path, src_path, sep_token):
     # Read the lines from both files
@@ -49,8 +71,9 @@ def concatenate_lines(context_path, src_path, sep_token):
         lines2 = file2.readlines()
 
     # Concatenate lines from the two files to create instances
-    instances =  [ line1.strip() + line2.strip() for line1, line2 in zip(lines1, lines2)]
+    instances =  [ line1.strip() +sep_token + line2.strip() for line1, line2 in zip(lines1, lines2)]
 
+    print ("instances",instances[0])
     return instances
 
 def read_label(label_path):
@@ -88,7 +111,7 @@ def compute_metrics(eval_pred):
     metric2 = evaluate.load("f1")
     preds, labels = eval_pred
     preds = np.argmax(preds, axis=1)
-    
+    print(preds[:5], labels[:5])
     accuracy = metric1.compute(predictions=preds, references=labels)["accuracy"]
     f1 = metric2.compute(predictions=preds, references=labels)["f1"]
     
@@ -180,10 +203,11 @@ if __name__ == "__main__":
     main()
 """
 # train-eval
-file1_path="/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-1-1/source.txt"
-file2_path = "/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/prompt+source.txt"
-label_path = "/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/comet_binary.txt"
-model_checkpoint = "bert-large-uncased" #"bert-base-cased" # "bert-large-cased"
+data_dir = "/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1"
+prompt_path = data_dir + "/prompt+source.txt"
+src_path= data_dir + "/source.txt" 
+label_path = data_dir + "/comet_binary.txt"
+model_checkpoint = "bert-base-uncased" #"bert-base-cased" # "bert-large-cased"
 
 model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
 tokenizer = BertTokenizerFast.from_pretrained(model_checkpoint)
@@ -194,16 +218,18 @@ sep_token = tokenizer.sep_token
 split_index = 5507  # Replace this with your desired index
 
 # Load and concatenate the data
-instances = concatenate_lines(file1_path, file2_path, sep_token)
+context_path = extract_context(prompt_path, data_dir)
+instances = concatenate_lines(context_path, src_path, sep_token)
 all_labels = read_label(label_path)
 train_dataset, validation_dataset = split_data(split_index, instances, all_labels)
 #train_dataset, validation_dataset = shuffle_data(train_dataset, validation_dataset)
 
-train_tokenized_datasets = train_dataset.map(tokenize_function, batched=True)#.select(range(10))
-val_tokenized_datasets = validation_dataset.map(tokenize_function, batched=True)#.select(range(10))
+train_tokenized_datasets = train_dataset.map(tokenize_function, batched=True)#.select(range(3))
+val_tokenized_datasets = validation_dataset.map(tokenize_function, batched=True)#.select(range(3))
 # test_tokenized_datasets = test_dataset.map(tokenize_function, batched=True)#.select(range(3))
 
-output_dir = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/large-uncased-3e-5_ep5"
+output_dir = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/base-uncased-4e-5_ep10"
+
 # Trainer
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
@@ -212,16 +238,16 @@ training_args = TrainingArguments(
     do_eval= True,
     do_predict= True,
     do_train=True, 
-    num_train_epochs=5,#5#10
+    num_train_epochs=10,#5#10
     weight_decay=0.01,
     evaluation_strategy="epoch",
     save_strategy="epoch", # "no" was bad with load best model
     save_total_limit = 3,
     load_best_model_at_end=True,
     per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
-    metric_for_best_model = "f1",
-    learning_rate = 3e-5 #4e-5, #5e-5, 2e-5, 3e-5
+    per_device_eval_batch_size=16,
+    metric_for_best_model = "f1",# accuracy
+    learning_rate = 4e-5 #4e-5, #5e-5, 2e-5, 3e-5
     )
 
 trainer = Trainer(
@@ -236,10 +262,19 @@ trainer = Trainer(
 
 # Train
 trainer.train()
-tokenizer.save_pretrained(output_dir)
+tokenizer.save_pretrained(output_dir+"/tokenizer")
 print ("Training Done")
 
 # Eval
 model.eval()
 eval_result = trainer.evaluate()
 print (eval_result)
+
+# Write Inputs
+#ip_path = output_dir + "/inputs.txt"
+#if not os.path.exists(ip_path):
+    #os.mkdir(ip_path)
+
+with open(output_dir + "/inputs.txt", "w") as wf:
+    for instance in instances:
+        wf.write(f"{instance}\n")

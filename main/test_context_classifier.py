@@ -12,6 +12,7 @@ from sklearn.metrics import accuracy_score
 from transformers import DataCollatorWithPadding
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
+import os
 """
 def read_arguments() -> ArgumentParser:
     parser = ArgumentParser(description="Command for evaluating models.")
@@ -39,7 +40,27 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument('--generic.metrics',  type=str, help = "Comma-separated list of strings", default= "sacrebleu,comet", required=False)
     return parser
 """
+def extract_context(prompt_path, data_dir):
+    # Read your input file
+    with open(prompt_path, 'r') as file:
+        text = file.read()
 
+    # Use regular expressions to find and extract the sentences after "Given Context"
+    #matches = re.findall(r'Given context:\n(.*?)\nTranslate English to Japanese:', text, re.DOTALL)
+    matches = re.findall(r'Given context:\n(.*?)(?:Translate English to|\Z)', text, re.DOTALL)
+
+    # Process the matches to replace empty strings with ""
+    processed_matches = [match.strip().replace('\n', ', ') if match.strip() else "" for match in matches]
+
+    # Join the processed matches into a single string
+    extracted_text = '\n'.join(processed_matches)
+
+    # Save the extracted text into a new file
+    context_path = data_dir + '/extracted_context.txt'
+    with open(data_dir + '/extracted_context.txt', 'w') as output_file:
+        output_file.write(extracted_text)
+    
+    return context_path
 
 def concatenate_lines(context_path, src_path, sep_token):
     # Read the lines from both files
@@ -49,8 +70,9 @@ def concatenate_lines(context_path, src_path, sep_token):
         lines2 = file2.readlines()
 
     # Concatenate lines from the two files to create instances
-    instances =  [ line1.strip() + line2.strip() for line1, line2 in zip(lines1, lines2)]
+    instances =  [ line1.strip() +sep_token + line2.strip() for line1, line2 in zip(lines1, lines2)]
 
+    print ("instances",instances[0])
     return instances
 
 def read_label(label_path):
@@ -187,14 +209,15 @@ model_checkpoint = "bert-base-uncased" #"bert-base-cased" # "bert-large-cased"
 
 """
 # Test 
-file1_path="/mnt/data-poseidon/sumire/thesis/2-1/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/source.txt"
-file2_path = "/mnt/data-poseidon/sumire/thesis/2-1/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/prompt+source.txt"
-label_path = "/mnt/data-poseidon/sumire/thesis/2-1/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/comet_binary.txt"
-model_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/test/uncased-3e-5_ep5/" #"bert-large-uncased"#"bert-base-cased" # "bert-large-cased"
-best_model_checkpoint = "checkpoint-5"
-
-model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint+best_model_checkpoint, num_labels=2)
-tokenizer = BertTokenizerFast.from_pretrained(model_checkpoint)
+data_dir = "/mnt/data-poseidon/sumire/thesis/2-1/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1"
+src_path=data_dir+"/source.txt"
+prompt_path = data_dir+"/prompt+source.txt"
+label_path = data_dir+"/comet_binary.txt"
+#model_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/test/uncased-3e-5_ep5/" #"bert-large-uncased"#"bert-base-cased" # "bert-large-cased"
+best_model_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/test/uncased-3e-5_ep5/checkpoint-5"
+tokenizer_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/checking/base-uncased-4e-5_ep10/tokenizer"
+model = AutoModelForSequenceClassification.from_pretrained(best_model_checkpoint, num_labels=2)
+tokenizer = BertTokenizerFast.from_pretrained(tokenizer_checkpoint)
 sep_token = tokenizer.sep_token
 print ("sep_token:",sep_token, tokenizer.sep_token_id) # sep_token: [SEP] 102
 
@@ -202,7 +225,8 @@ print ("sep_token:",sep_token, tokenizer.sep_token_id) # sep_token: [SEP] 102
 split_index = 5507  # Replace this with your desired index
 
 # Load and concatenate the data
-instances = concatenate_lines(file1_path, file2_path, sep_token)
+context_path = extract_context(prompt_path, data_dir)
+instances = concatenate_lines(context_path, src_path, sep_token)
 all_labels = read_label(label_path)
 #train_dataset, validation_dataset = split_data(split_index, instances, all_labels)
 #train_dataset, validation_dataset = shuffle_data(train_dataset, validation_dataset)
@@ -210,7 +234,7 @@ all_labels = read_label(label_path)
 #train_tokenized_datasets = train_dataset.map(tokenize_function, batched=True).select(range(10))
 #val_tokenized_datasets = validation_dataset.map(tokenize_function, batched=True).select(range(10))
 test_dataset = Dataset.from_dict({"text": instances, 'label':all_labels})
-test_tokenized_datasets = test_dataset.map(tokenize_function, batched=True).select(range(10))
+test_tokenized_datasets = test_dataset.map(tokenize_function, batched=True)#.select(range(10))
 
 output_dir = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/test/uncased-3e-5_ep5"
 # Trainer
@@ -242,28 +266,23 @@ trainer = Trainer(
     data_collator=data_collator
 )
 
-"""
-# Train
-trainer.train()
-tokenizer.save_pretrained(output_dir)
-print ("Training Done")
-
-# Eval
-model.eval()
-eval_result = trainer.evaluate()
-print (eval_result)
-
-"""
-
 #test
 test_result = trainer.predict(test_tokenized_datasets)##############put test data
 print (test_result)
 
-with open(output_dir+"model_type.txt", "w", encoding="utf-8") as wf:
+prediction_dir = output_dir + "/prediction/"
+if not os.path.exists(prediction_dir):
+    os.mkdir(prediction_dir)
+
+with open(prediction_dir + "model_type.txt", "w", encoding="utf-8") as wf:
     wf.write(f"{model_checkpoint}")
 
-with open(output_dir+"test_score.txt", "w", encoding="utf-8") as wf:
+with open(prediction_dir+"test_score.txt", "w", encoding="utf-8") as wf:
     wf.write(f"{test_result[-1]}")
 
-with open(output_dir+"prediction.txt", "w", encoding="utf-8") as wf:
-    wf.write(f"{test_result[-0]}")
+with open(prediction_dir+"prediction.txt", "w", encoding="utf-8") as wf:
+    wf.write(f"{np.argmax(test_result[-0], axis=1)}")
+
+with open(output_dir + "/inputs.txt", "w") as wf:
+    for instance in instances:
+        wf.write(f"{instance}\n")
