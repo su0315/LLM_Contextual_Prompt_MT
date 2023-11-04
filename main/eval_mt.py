@@ -45,6 +45,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
     parser.add_argument("--generic.api", type=bool, default=False, metavar="FILE", help="Whether using text generation api or not")
     parser.add_argument('--generic.metrics',  type=str, help = "Comma-separated list of strings", default= "sacrebleu,comet", required=False)
+    parser.add_argument('--generic.classified_path',  type=str, help = "The path to the classified label for context if any", default= None, required=False)
     return parser
 
 
@@ -99,6 +100,7 @@ def initialize_model(model_checkpoint, api):
 
 def read_data(
     data_path,  
+    classified_path,
     tgt_lang, 
     api,
     model_checkpoint, 
@@ -138,19 +140,19 @@ def read_data(
 
         if api is True:
             if do_train:
-                train_inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"])
-                val_inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["val"])
+                train_inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"])
+                val_inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["val"])
                 inputs = train_inputs + val_inputs
             else:
-                inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
+                inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
         
         else:
             if do_train:
-                train_inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"]).input_ids
-                val_inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, val_few_shots, prompt_type, max_length, tokenizer, dataset["val"]).input_ids
+                train_inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"]).input_ids
+                val_inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, val_few_shots, prompt_type, max_length, tokenizer, dataset["val"]).input_ids
                 inputs = train_inputs + val_inputs
             else:
-                inputs = preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
+                inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
         
     elif "BSD-master" in data_path:
         data_files = {"train":data_path+"train.json","test":data_path+"test.json"}
@@ -158,16 +160,16 @@ def read_data(
         few_shots = generate_prompt_bsd(dataset["train"], src_context_size, tgt_lang, model_checkpoint, k, prompt_type)
         sources = np.asarray([sent['en_sentence'] for doc in dataset["test"]["conversation"] for sent in doc])
         if api is True:
-            inputs = preprocess_function_bsd(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
+            inputs = preprocess_function_bsd(classified_path,src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
         else:
-            inputs = preprocess_function_bsd(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
+            inputs = preprocess_function_bsd(classified_path,src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
         #labels = preprocess_function_bsd(tgt_lang, prompt, max_length, tokenizer, dataset["test"]).labels
         labels = np.asarray([sent['ja_sentence'] for doc in dataset["test"]["conversation"] for sent in doc])
         output_dir = f"/mnt/data-poseidon/sumire/thesis/running/BSD/en-{tgt_lang}/{cfg_name}/"
 
     if "ContraPro" in data_path:
         if api is True:
-            inputs, labels, sources, few_shots = preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_type, api, max_length, summarized_contexts)
+            inputs, labels, sources, few_shots = preprocess_function_contrapro(classified_path,data_path, tgt_lang, src_context_size, prompt_type, api, max_length, summarized_contexts)
             output_dir = f"/mnt/data-poseidon/sumire/thesis/running/contrapro/en-{tgt_lang}/{cfg_name}/"
             print (output_dir)
             labels = np.asarray(labels)
@@ -288,15 +290,11 @@ def evaluate_mt(
             eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
             result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
             print (decoded_preds)
-
-            with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
-                
-                bleu_score = result["bleu"]
-                comet_score = result["comet"]
-                gen_len_score = result["gen_len"]
-
-                for metric, score in zip(["bleu", "comet", "gen_len"], [bleu_score, comet_score, gen_len_score]):
-                    wf.write(f"{metric}: {score}\n") 
+            
+            # Write the averaged score
+            with open(output_dir+'/test_score.txt','a', encoding='utf8') as wf:
+                for metric in metrics:  
+                    wf.write(f"{metric}: {result[metric]}\n") 
 
             with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
                 for pred in decoded_preds:
@@ -378,6 +376,8 @@ def main():
     api = cfg.generic.api
     do_train = cfg.generic.do_train
     metrics = cfg.generic.metrics.split(",")
+    print ("##################metirics", metrics)
+    classified_path = cfg.generic.classified_path
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     
@@ -387,6 +387,7 @@ def main():
     # Load Dataset
     few_shots, sources, inputs, labels, output_dir  = read_data(
         data_path, 
+        classified_path,
         tgt_lang, 
         api,
         model_checkpoint, 
