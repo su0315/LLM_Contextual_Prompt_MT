@@ -10,9 +10,15 @@ from transformers import TrainingArguments, Trainer
 from functools import partial
 from sklearn.metrics import accuracy_score
 from transformers import DataCollatorWithPadding
+from transformers import EarlyStoppingCallback, IntervalStrategy
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
 import os 
+from transformers.integrations import TensorBoardCallback
+import tensorboard
+import random
+import torch
+
 """
 def read_arguments() -> ArgumentParser:
     parser = ArgumentParser(description="Command for evaluating models.")
@@ -40,6 +46,17 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument('--generic.metrics',  type=str, help = "Comma-separated list of strings", default= "sacrebleu,comet", required=False)
     return parser
 """
+
+random_seed = 42
+np.random.seed(random_seed)
+torch.manual_seed(random_seed)
+random.seed(random_seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(random_seed)
+
+# Set the random seed for Hugging Face Transformers
+TrainingArguments.seed = random_seed
+
 
 def extract_context(prompt_path, data_dir):
     # Read your input file
@@ -106,6 +123,12 @@ def tokenize_function(examples):
 metric1 = evaluate.load("accuracy")
 metric2 = evaluate.load("f1")
 
+output_dir = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/base-uncased-2e-5_ep10-batch-lesszerolabel_2-"
+
+prediction_dir = output_dir + "/prediction"
+if not os.path.exists(prediction_dir):
+    os.mkdir(prediction_dir)
+
 def compute_metrics(eval_pred):
     metric1 = evaluate.load("accuracy")
     metric2 = evaluate.load("f1")
@@ -115,6 +138,10 @@ def compute_metrics(eval_pred):
     accuracy = metric1.compute(predictions=preds, references=labels)["accuracy"]
     f1 = metric2.compute(predictions=preds, references=labels)["f1"]
     
+    with open(prediction_dir+"/prediction.txt", "a") as wf:
+        for pred in preds:
+            wf.write(str(pred))
+
     return {"accuracy": accuracy, "f1": f1}
 
 def main():
@@ -203,10 +230,11 @@ if __name__ == "__main__":
     main()
 """
 # train-eval
-data_dir = "/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1"
+data_dir = "/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/augumenttest_Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1"
 prompt_path = data_dir + "/prompt+source.txt"
 src_path= data_dir + "/source.txt" 
-label_path = data_dir + "/comet_binary.txt"
+#label_path = data_dir + "/comet_binary.txt"
+label_path = data_dir + "/lesszero_comet_binary.txt" # Augumented Data
 model_checkpoint = "bert-base-uncased" #"bert-base-cased" # "bert-large-cased"
 
 model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
@@ -214,21 +242,27 @@ tokenizer = BertTokenizerFast.from_pretrained(model_checkpoint)
 sep_token = tokenizer.sep_token
 #print ("sep_token:",sep_token, tokenizer.sep_token_id) # sep_token: [SEP] 102
 
-# Define the index where you want to split the dataset
-split_index = 5507  # Replace this with your desired index
-
 # Load and concatenate the data
-context_path = extract_context(prompt_path, data_dir)
-instances = concatenate_lines(context_path, src_path, sep_token)
+#context_path = extract_context(prompt_path, data_dir)
+#instances = concatenate_lines(context_path, src_path, sep_token)
+filtered_instances_path = "/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/train-val/en-ja/augumenttest_Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1/filtered_instances.txt"
+instances = []
+with open(filtered_instances_path, "r") as rf:
+    for line in rf:
+        instances.append(line.strip())
+
 all_labels = read_label(label_path)
+
+# Define the index where you want to split the dataset
+#split_index = 5507  # Replace this with your desired index
+split_index = 4706
 train_dataset, validation_dataset = split_data(split_index, instances, all_labels)
 #train_dataset, validation_dataset = shuffle_data(train_dataset, validation_dataset)
 
 train_tokenized_datasets = train_dataset.map(tokenize_function, batched=True)#.select(range(3))
 val_tokenized_datasets = validation_dataset.map(tokenize_function, batched=True)#.select(range(3))
 # test_tokenized_datasets = test_dataset.map(tokenize_function, batched=True)#.select(range(3))
-
-output_dir = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/base-uncased-4e-5_ep10"
+tensorboard_callback = TensorBoardCallback()
 
 # Trainer
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
@@ -240,14 +274,18 @@ training_args = TrainingArguments(
     do_train=True, 
     num_train_epochs=10,#5#10
     weight_decay=0.01,
-    evaluation_strategy="epoch",
-    save_strategy="epoch", # "no" was bad with load best model
+    evaluation_strategy="steps",
+    save_strategy="steps", # "no" was bad with load best model
     save_total_limit = 3,
     load_best_model_at_end=True,
-    per_device_train_batch_size=8,
+    per_device_train_batch_size=4,#16
     per_device_eval_batch_size=16,
     metric_for_best_model = "f1",# accuracy
-    learning_rate = 4e-5 #4e-5, #5e-5, 2e-5, 3e-5
+    learning_rate = 2e-5, #4e-5, #5e-5, 2e-5, 3e-5,
+    logging_dir= output_dir + "/logs",
+    logging_strategy= "steps",
+    #logging_steps= 300,
+    report_to="tensorboard"
     )
 
 trainer = Trainer(
@@ -256,7 +294,8 @@ trainer = Trainer(
     train_dataset=train_tokenized_datasets,
     eval_dataset= val_tokenized_datasets,
     compute_metrics=compute_metrics,
-    data_collator=data_collator
+    data_collator=data_collator,
+    callbacks = [EarlyStoppingCallback(early_stopping_patience=5), tensorboard_callback]
 )
 
 
@@ -278,3 +317,6 @@ print (eval_result)
 with open(output_dir + "/inputs.txt", "w") as wf:
     for instance in instances:
         wf.write(f"{instance}\n")
+
+
+

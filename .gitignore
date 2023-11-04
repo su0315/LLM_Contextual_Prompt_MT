@@ -200,4 +200,4 @@ data/iwslt_hf/old_generated_data/ted_en-zh
 main/tokenizer.py
 notebook/api.ipynb
 data/iwslt_hf/
-data/mulda_tagged/
+data/muda_tagged/

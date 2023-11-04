@@ -17,7 +17,6 @@ from transformers import EarlyStoppingCallback
 from transformers.integrations import TensorBoardCallback
 import torch
 import random 
-
 """
 def read_arguments() -> ArgumentParser:
     parser = ArgumentParser(description="Command for evaluating models.")
@@ -56,7 +55,6 @@ if torch.cuda.is_available():
 # Set the random seed for Hugging Face Transformers
 TrainingArguments.seed = random_seed
 
-
 def extract_context(prompt_path, data_dir):
     # Read your input file
     with open(prompt_path, 'r') as file:
@@ -92,6 +90,7 @@ def concatenate_lines(context_path, src_path, sep_token):
     print ("instances",instances[0])
     return instances
 
+"""
 def read_label(label_path):
     # Label load
     all_labels = []
@@ -100,21 +99,7 @@ def read_label(label_path):
             score = int(line.strip())
             all_labels.append(score)
     return all_labels
-
-def split_data(split_index, source, target):
-    # Split the custom_dataset into training and validation
-    train_dataset = Dataset.from_dict({'text': instances[:split_index], 'label':all_labels[:split_index]})
-    validation_dataset = Dataset.from_dict({"text": instances[split_index:], 'label':all_labels[split_index:]})
-    print ("train", len(train_dataset), train_dataset[-1])
-    print("val", len(validation_dataset), validation_dataset[0])
-    return train_dataset, validation_dataset
-
-def shuffle_data(train, val):
-    # Shuffle Dataset
-    train_dataset = train_dataset.shuffle(seed=42) ####
-    validation_dataset = validation_dataset.shuffle(seed=42) ####
-    # Access the training and validation datasets
-    return train_dataset, validation_dataset
+"""
 
 def tokenize_function(examples):
     return tokenizer(examples["text"], padding="max_length", truncation=True)
@@ -126,6 +111,7 @@ def compute_metrics(eval_pred):
     metric1 = evaluate.load("accuracy")
     metric2 = evaluate.load("f1")
     preds, labels = eval_pred
+    print ("check if labels are none", preds, labels)
     preds = np.argmax(preds, axis=1)
     
     accuracy = metric1.compute(predictions=preds, references=labels)["accuracy"]
@@ -229,10 +215,10 @@ model_checkpoint = "bert-base-uncased" #"bert-base-cased" # "bert-large-cased"
 data_dir = "/mnt/data-poseidon/sumire/thesis/2-1/en-ja/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-ja-2-1"
 src_path=data_dir+"/source.txt"
 prompt_path = data_dir+"/prompt+source.txt"
-label_path = data_dir+"/comet_binary.txt"
+#label_path = data_dir+"/comet_binary.txt"
 #model_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/test/uncased-3e-5_ep5/" #"bert-large-uncased"#"bert-base-cased" # "bert-large-cased"
-best_model_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/base-uncased-2e-5_ep10-batch-lesszerolabel_2/checkpoint-2500"
-tokenizer_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/base-uncased-2e-5_ep10-batch-lesszerolabel_2/tokenizer"
+best_model_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/base-uncased-4e-5_ep10/checkpoint-4134"
+tokenizer_checkpoint = "/mnt/data-poseidon/sumire/thesis/running/classifier/ja/2-1/train-eval/base-uncased-4e-5_ep10/tokenizer"
 model = AutoModelForSequenceClassification.from_pretrained(best_model_checkpoint, num_labels=2)
 tokenizer = BertTokenizerFast.from_pretrained(tokenizer_checkpoint)
 sep_token = tokenizer.sep_token
@@ -244,16 +230,16 @@ split_index = 5507  # Replace this with your desired index
 # Load and concatenate the data
 context_path = extract_context(prompt_path, data_dir)
 instances = concatenate_lines(context_path, src_path, sep_token)
-all_labels = read_label(label_path)
+#all_labels = read_label(label_path)
 #train_dataset, validation_dataset = split_data(split_index, instances, all_labels)
 #train_dataset, validation_dataset = shuffle_data(train_dataset, validation_dataset)
 
 #train_tokenized_datasets = train_dataset.map(tokenize_function, batched=True).select(range(10))
 #val_tokenized_datasets = validation_dataset.map(tokenize_function, batched=True).select(range(10))
-test_dataset = Dataset.from_dict({"text": instances, 'label':all_labels})
+test_dataset = Dataset.from_dict({"text": instances})
 test_tokenized_datasets = test_dataset.map(tokenize_function, batched=True)#.select(range(10))
 tensorboard_callback = TensorBoardCallback()
-output_dir = "/mnt/data-poseidon/sumire/thesis/running/context_classifier/ted-ja/2-1/test/base-uncased-2e-5_ep10-batch-lesszerolabel_2"
+output_dir = "/mnt/data-poseidon/sumire/thesis/running/context_classifier/ted-ja/2-1/test/large-uncased-3e-5_ep10"
 # Trainer
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 

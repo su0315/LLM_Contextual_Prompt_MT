@@ -71,7 +71,7 @@ def select_context(context_size, doc_input, current_idx, sep_token, prompt_type)
     return _context 
 
 
-def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
+def preprocess_function(classified_path, src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
 
     break_token = "<#b#>"
  
@@ -86,18 +86,41 @@ def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_s
     inputs = []
 
     # Context for source sentence
+    
     if prompt_type == 1:
         context_inst = f"Given context:{sep_token}" 
     elif prompt_type == 2:
         context_inst = ""
 
+    """
+    if classified: # TODO load class for each line and put zip in sentence loop
+        # Load the class for ech input 
+        context_scores = []
+        with open(classified_path, "r", encoding='utf8') as rf:
+            for line in rf:
+                context_scores.append(int(line.strip()))
+    """
+            
+
     if src_context_size >= 1:
         for doc_idx, doc in enumerate(data["doc"]):
+            
             doc_input = [sent for sent in doc["en"]] 
             
             for idx, ip in enumerate(doc_input):
-                _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
+                """
+                if classified:
+                    # Check the clasisfied value 
+                    if : # classified as 1:# TODO check if 0 or 1
 
+                        _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
+                    else: 
+                        context_inst = ""
+                        _context = ""
+                else:
+                    _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
+                """
+                _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
                 if prompt_type==1:
                     #concat_input = _context + prompt + ip + after_ip 
                     #inputs.append(concat_input)
