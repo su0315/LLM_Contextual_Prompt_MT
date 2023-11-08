@@ -205,7 +205,13 @@ def evaluate_mt(
     if api is True: # No batch, directly input string to the model
         if do_train: # Predict and eval for each instance
             for inp, label, src in zip(inputs, labels, sources): 
+                # psudocode
+                """
+                variable = inp + label
+                score = model.score(variable)
+                """
                 pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
+
                 with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
                     wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
                     print ("Hi3")
@@ -255,50 +261,107 @@ def evaluate_mt(
             all_preds = []
             all_labels = []
             all_srcs = []
+            all_ref_scores = []
             print ("Hi")
 
-            # Generate
-            for inp, label, src in zip(inputs, labels, sources): 
-                print ("Hi2")
+            if "cxmi" in metrics:
+                cxmi_sep_token = "\n"
+                cxmi_sep_token_id = model.generate(
+                    prompt=cxmi_sep_token,
+                    do_sample=False,
+                    max_new_tokens=1,
+                    decoder_input_details=True
+                    ).details.prefill[1:][-1].id
+
+                for inp, label, src in zip(inputs, labels, sources): 
+                    print ("Hi2")
+                    print ("INP", inp)
+                    print ("LABEL", label)
+                    print (inp+label)
+                    prompt_scores = model.generate(
+                        prompt=inp+label,#sep_token
+                        do_sample=False,
+                        max_new_tokens=1,
+                        decoder_input_details=True
+                    ).details.prefill[1:]
+
+                    last_sep_id = [prompt_scores.index(i) for i in prompt_scores if i.id==cxmi_sep_token_id][-1]
+                    print (last_sep_id)
+                    ref_scores_with_details = prompt_scores[last_sep_id+1:]
+                    print (ref_scores_with_details)
+                    ref_scores = [token.logprob for token in ref_scores_with_details]
+                    print (ref_scores)
+
+                    all_ref_scores.append(ref_scores)
+
+                    with open(output_dir+'/ref_scores_details.txt','a', encoding='utf8') as wf:
+                        ref_scores_details = ", ".join([str(i) for i in ref_scores_with_details])
+                        wf.write(f"{ref_scores_details}\n") # if with batch maybe need to adapt
+                        print ("Hi3")
+
+                    with open(output_dir+'/ref_scores.txt','a', encoding='utf8') as wf:
+                        ref_scores = ", ".join([str(i) for i in ref_scores])
+                        wf.write(f"{ref_scores}\n") # if with batch maybe need to adapt
+                        print ("Hi4")
                 
-                print ("INP", inp)
-                print ("LABEL", label)
-                pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
+                with open(output_dir+'/ref_scores.txt','r', encoding='utf8') as rf:
+                    all_sent_scores = 0
+                    for sent_score in rf:
+                        sum_sent = 0
+                        sent_score = sent_score.strip().split(", ")
+                        for token_score in sent_score:
+                            sum_sent += float(token_score)
+                        all_sent_scores += sum_sent
+
+                # CXMI
+                entropy = all_sent_scores / len(all_ref_scores)
+                with open(output_dir+'/Entropy.txt','w', encoding='utf8') as wf:
+                    wf.write(f"Entropy: {entropy}")
+
+
+            else:
+                for inp, label, src in zip(inputs, labels, sources): 
+                    print ("INP", inp)
+                    print ("LABEL", label)
+                    print ("Hi2")
+                    # Generate
+                    pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
                 
-                all_preds.append(pred)
-                all_labels.append(label)
-                all_srcs.append(src)
-            
+                    all_preds.append(pred)
+                    all_labels.append(label)
+                    all_srcs.append(src)
+                
 
-                with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
-                    wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
-                    print ("Hi3")
+                    with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
+                        wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
+                        print ("Hi3")
 
-                with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
-                    wf.write(label.strip()+'\n')
+                    with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
+                        wf.write(label.strip()+'\n')
 
-                with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
-                    wf.write(src.strip()+'\n')
+                    with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
+                        wf.write(src.strip()+'\n')
 
-                with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
-                    wf.write(inp.strip()+'\n')
+                    with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
+                        wf.write(inp.strip()+'\n')
             
             print ("Hi4")
 
 
             # Evaluate
-            eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
-            result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
-            print (decoded_preds)
-            
-            # Write the averaged score
-            with open(output_dir+'/test_score.txt','a', encoding='utf8') as wf:
-                for metric in metrics:  
-                    wf.write(f"{metric}: {result[metric]}\n") 
+            if "sacrebleu" in metrics or "comet" in metrics:
+                eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
+                result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+                print (decoded_preds)
+                
+                # Write the averaged score
+                with open(output_dir+'/test_score.txt','a', encoding='utf8') as wf:
+                    for metric in metrics:  
+                        wf.write(f"{metric}: {result[metric]}\n") 
 
-            with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
-                for pred in decoded_preds:
-                    wf.write(pred.strip()+'\n')
+                with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
+                    for pred in decoded_preds:
+                        wf.write(pred.strip()+'\n')
             
 
     else: 
