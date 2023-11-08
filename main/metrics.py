@@ -37,7 +37,7 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
         for pred in preds:
             if break_token in pred:
                 print ("break token founded")
-                tgt_pred = pred.split(break_token)[1]
+                tgt_pred = pred.split(break_token)[-1]#1
                 tgt_preds.append(tgt_pred)
             else:
                 if "\n" in pred:

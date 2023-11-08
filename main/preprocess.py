@@ -156,6 +156,10 @@ def preprocess_function(classified_path, src_context_size, tgt_lang, api, model_
 
             if api:
                 inputs = ["### User:\n" + few_shots + sent + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
+                #if prompt_type == 1:
+                    #inputs = ["### User:\n" + few_shots + sent + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
+                    #inputs = ["### User:\n" + context_inst + few_shots + sent + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
+
             else:
                 inputs = [few_shots + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
             

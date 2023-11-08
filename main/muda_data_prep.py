@@ -29,8 +29,9 @@ def mudadata_for_ted(data_path, tgt_lang, output_dir):
             print (item)
             wf.write(f"{item}\n")
 
+tgt_lang="zh"
 ted_data_path = "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/"
-output_dir = "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/muda_tagged/ted/"
+output_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/muda_tagged/ted/{tgt_lang}/"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
-mudadata_for_ted(data_path=ted_data_path, tgt_lang="ja", output_dir=output_dir)
+mudadata_for_ted(data_path=ted_data_path, tgt_lang=tgt_lang, output_dir=output_dir)
