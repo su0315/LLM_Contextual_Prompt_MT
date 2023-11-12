@@ -17,4 +17,5 @@ generic:
   max_new_tokens : 1024 #64 #128 
   max_length : 1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
   api: True
+  metrics: cxmi
   cfg_name : cxmi-Llama-2-70b-instruct-v2-usas-zs-nsplit-p1-ja-7-1
