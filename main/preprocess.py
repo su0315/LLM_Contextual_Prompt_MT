@@ -71,7 +71,7 @@ def select_context(context_size, doc_input, current_idx, sep_token, prompt_type)
     return _context 
 
 
-def preprocess_function(classified_path, src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
+def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
 
     break_token = "<#b#>"
  
@@ -102,25 +102,19 @@ def preprocess_function(classified_path, src_context_size, tgt_lang, api, model_
     """
             
 
-    if src_context_size >= 1:
+    if src_context_size >= 1 or tgt_context_size >= 1:
         for doc_idx, doc in enumerate(data["doc"]):
-            
-            doc_input = [sent for sent in doc["en"]] 
+            doc_input = [sent for sent in doc["en"]]
+             
+            if tgt_context_size >= 1:
+                doc_tgt_input = [sent for sent in doc[tgt_lang]]
             
             for idx, ip in enumerate(doc_input):
-                """
-                if classified:
-                    # Check the clasisfied value 
-                    if : # classified as 1:# TODO check if 0 or 1
-
-                        _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
-                    else: 
-                        context_inst = ""
-                        _context = ""
-                else:
+                if src_context_size >= 1:
                     _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
-                """
-                _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
+                elif tgt_context_size >= 1:
+                    _context = select_context(tgt_context_size, doc_tgt_input, idx, sep_token, prompt_type)
+                
                 if prompt_type==1:
                     #concat_input = _context + prompt + ip + after_ip 
                     #inputs.append(concat_input)

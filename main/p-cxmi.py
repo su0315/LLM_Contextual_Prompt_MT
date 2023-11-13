@@ -50,7 +50,9 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
     phenomena = []
     with open(f"{muda_tag_path}", "r") as rf:
         tagged_tokens = []
+     
         docs = json.load(rf)
+       
         for doc in docs:
             for sent_id, sent in enumerate(doc):
                 tagged_token_in_sent = []
@@ -89,6 +91,7 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
                             p_scores = 0
                             n_letter_in_token = 0
                             if ref_token in tagged_token:
+                                print ("yes1")
                                 n_letter_in_token += 1
                                 p_scores += score
                                 p_scores = p_scores / n_letter_in_token
@@ -107,6 +110,7 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
         context_sent_scores = np.array([score for score in phe_to_scores[phe]["context"]])
         
         if len(base_sent_scores) > 0 and len(context_sent_scores) > 0:
+            print ("yes")
             p_cxmi = (np.array(base_sent_scores) - np.array(context_sent_scores))
             max_p_cxmi_id = np.argmax(-p_cxmi)
             max_p_cxmi_score = -p_cxmi[max_p_cxmi_id]

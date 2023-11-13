@@ -30,7 +30,8 @@ def read_arguments() -> ArgumentParser:
     #parser.add_argument("--generic.src_lang", required=True)
     parser.add_argument("--generic.data_path", required=True, metavar="FILE", help="path to model file for bsd is '/home/sumire/discourse_context_mt/data/BSD-master/'")
     parser.add_argument("--generic.do_train", type=bool, required=False, default =False,  help="if you do evaluate train data")
-    parser.add_argument("--generic.src_context", default="src", help="the number of the target context sentence for each input")
+    parser.add_argument("--generic.src_context", default=0, help="the number of the source context sentence for each input")
+    parser.add_argument("--generic.tgt_context", default=0, help="the number of the target context sentence for each input")
     #parser.add_argument("--generic.dropout", type=float, choices=np.arange(0.0, 1.0, 0.1), default=0, help="the coword dropout rate")
     #parser.add_argument("--generic.speaker", type=bool, default=False)
     #parser.add_argument("--generic.random_context", type=bool, default=False)
@@ -44,7 +45,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.max_length", type=int, default=0, help="max_length for input and labels")
     parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
     parser.add_argument("--generic.api", type=bool, default=False, metavar="FILE", help="Whether using text generation api or not")
-    parser.add_argument('--generic.metrics',  type=str, help = "Comma-separated list of strings", default= "sacrebleu,comet", required=False)
+    parser.add_argument('--generic.metrics',  type=str, help = "Comma-separated list of strings", default= "sacrebleu,comet,cxmi", required=False)
     parser.add_argument('--generic.classified_path',  type=str, help = "The path to the classified label for context if any", default= None, required=False)
     return parser
 
@@ -105,6 +106,7 @@ def read_data(
     api,
     model_checkpoint, 
     src_context_size,
+    tgt_context_size,
     k, 
     prompt_type, 
     max_length, 
@@ -140,19 +142,19 @@ def read_data(
 
         if api is True:
             if do_train:
-                train_inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"])
-                val_inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["val"])
+                train_inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"])
+                val_inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["val"])
                 inputs = train_inputs + val_inputs
             else:
-                inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
+                inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
         
         else:
             if do_train:
-                train_inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"]).input_ids
-                val_inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, val_few_shots, prompt_type, max_length, tokenizer, dataset["val"]).input_ids
+                train_inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"]).input_ids
+                val_inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, val_few_shots, prompt_type, max_length, tokenizer, dataset["val"]).input_ids
                 inputs = train_inputs + val_inputs
             else:
-                inputs = preprocess_function(classified_path,src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
+                inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"]).input_ids
         
     elif "BSD-master" in data_path:
         data_files = {"train":data_path+"train.json","test":data_path+"test.json"}
@@ -319,7 +321,7 @@ def evaluate_mt(
                     wf.write(f"Entropy: {entropy}")
 
 
-            else:
+            if "comet" in metrics or "sacrebleu" in metrics:
                 for inp, label, src in zip(inputs, labels, sources): 
                     print ("INP", inp)
                     print ("LABEL", label)
@@ -356,7 +358,7 @@ def evaluate_mt(
                 
                 # Write the averaged score
                 with open(output_dir+'/test_score.txt','a', encoding='utf8') as wf:
-                    for metric in metrics:  
+                    for metric in ["sacrebleu", "comet"]:  
                         wf.write(f"{metric}: {result[metric]}\n") 
 
                 with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:
@@ -429,6 +431,7 @@ def main():
     tgt_lang = cfg.generic.tgt_lang
     data_path = cfg.generic.data_path
     src_context_size = cfg.generic.src_context
+    tgt_context_size = cfg.generic.tgt_context
     model_checkpoint = cfg.generic.model_checkpoint
     batch_size = cfg.generic.batch_size
     k = cfg.generic.k
@@ -455,6 +458,7 @@ def main():
         api,
         model_checkpoint, 
         src_context_size,
+        tgt_context_size,
         k, 
         prompt_type, 
         max_length, 
@@ -472,7 +476,8 @@ def main():
         for i in [
             f"tgt_lang: {tgt_lang}", 
             f"data_path: {data_path}", 
-            f"src_context_size: {src_context_size}",  
+            f"src_context_size: {src_context_size}", 
+            f"tgt_context_size: {tgt_context_size}", 
             f"api: {api}",
             f"model_checkpoint: {model_checkpoint}", 
             f"batch_size: {batch_size}", 
