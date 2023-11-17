@@ -21,12 +21,12 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
         
         for pred in preds:
             if "\n" in pred:
-                print ("break token founded")
+                #print ("break token founded")
                 tgt_pred = pred.split("\n")[-1]
-                print ("split1", tgt_pred)
+                #print ("split1", tgt_pred)
                 tgt_preds.append(tgt_pred)
             else:
-                print ("break token not founded")
+                #print ("break token not founded")
                 tgt_preds.append(pred)
         preds = tgt_preds
 
@@ -36,17 +36,17 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
         
         for pred in preds:
             if break_token in pred:
-                print ("break token founded")
+                #print ("break token founded")
                 tgt_pred = pred.split(break_token)[-1]#1
                 tgt_preds.append(tgt_pred)
             else:
                 if "\n" in pred:
-                    print ("back-n founded")
+                    #print ("back-n founded")
                     tgt_pred = pred.split("\n")[-1]
                     tgt_preds.append(tgt_pred)
                 
                 else:
-                    print ("break token not founded")
+                    #print ("break token not founded")
                     tgt_preds.append(pred)
         preds = tgt_preds
     return preds, labels, input_ids
@@ -76,7 +76,7 @@ def compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokeni
     
     for metric in metrics:
         if metric == "sacrebleu":
-            print ("BLEU-preds", decoded_preds, "BLEU-references", decoded_labels)
+            #print ("BLEU-preds", decoded_preds, "BLEU-references", decoded_labels)
             # bleu
             if tgt_lang == "ja":
                 bleu = metric1.compute(predictions=decoded_preds, references=decoded_labels, tokenize='ja-mecab')
@@ -91,7 +91,7 @@ def compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokeni
             result[metric] =  bleu["score"]
 
         if metric == "comet":
-            print ("COMET-preds", decoded_preds, "COMET-references", decoded_labels)
+            #print ("COMET-preds", decoded_preds, "COMET-references", decoded_labels)
             # comet    
             comet = metric2.compute(predictions=decoded_preds, references=[item for decoded_label in decoded_labels for item in decoded_label], sources = decoded_input_ids)
             result[metric] =  np.mean(comet["scores"])

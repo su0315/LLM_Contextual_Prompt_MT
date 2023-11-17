@@ -1,0 +1,20 @@
+
+generic:
+  data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
+  #src_lang: en
+  tgt_lang: de
+  src_context: 0
+  #tgt_context: 0
+  #dropout: 0.0
+  #speaker: False
+  #random_context: False
+  #tag: False
+  #output_dir: "./results/" # Modify here
+  batch_size: 4
+  model_checkpoint : upstage/Llama-2-70b-instruct-v2
+  k : 0
+  prompt_type : 1
+  max_new_tokens : 1024 #64 #128 
+  max_length : 1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
+  api: True
+  cfg_name : context_inst_Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-de-1-1

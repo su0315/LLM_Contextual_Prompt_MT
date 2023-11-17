@@ -22,18 +22,20 @@ print (device)
 def read_output_dir():
     parser = ArgumentParser(description='Read output directory of the model we evaluate.')
     parser.add_argument('--output_dir', type=str, help='The directory path')
+    parser.add_argument('--criteria', type=str, help='The criteria you select the sentences to be evaluated')
     args = parser.parse_args()
     output_dir = args.output_dir
-    return output_dir
+    criteria = args.criteria
+    return output_dir, criteria
 
 def read_config(output_dir):
     # Initialize an empty dictionary to store the configuration
     config = {}
-    
+    print ("#############")
     try:
         with open(f"{output_dir}/config", 'r') as file:
             for line in file:
-
+                print (line)
                 if ":" in line and "prompt+source" not in line:
                     # Split each line at the colon (":") to separate the key and value
                     print (line)
@@ -47,17 +49,18 @@ def read_config(output_dir):
     # You can access individual elements like this: ################# Correct CO
     tgt_lang = config.get('tgt_lang', None)
     data_path = config.get('data_path', None)
-    src_context_size = int(config.get('src_context_size', None))
+    #src_context_size = int(config.get('src_context_size', None))
     api = config.get('api', None)
     model_checkpoint = config.get('model_checkpoint', None)
-    batch_size = int(config.get('batch_size', None))
-    max_new_tokens = int(config.get('max_new_tokens', None))
-    prompt_type = int(config.get('prompt_type', None))
-    max_length = int(config.get('max_length', None))
+    #batch_size = int(config.get('batch_size', None))
+    #max_new_tokens = int(config.get('max_new_tokens', None))
+    prompt_type = int(config.get('prompt_type', 1))
+    #max_length = int(config.get('max_length', None))
+    metrics = ["comet", "sacrebleu"]
     cfg_name = config.get('cfg_name', None)
-    k = int(config.get('k', None))
+    #k = int(config.get('k', None))
 
-    return tgt_lang, data_path, src_context_size, api, model_checkpoint, batch_size, k, prompt_type, max_new_tokens, max_length, cfg_name
+    return tgt_lang, data_path, api, model_checkpoint, prompt_type, metrics, cfg_name
 
 
 def initialize_tokenizer(model_checkpoint, api):
@@ -83,7 +86,56 @@ def initialize_tokenizer(model_checkpoint, api):
 
     return tokenizer 
 
-def select_instances(criteria, output_dir):
+def select_muda_tags(criteria, output_dir, tgt_lang, preds, sources, labels):
+    muda_path = "/home/sumire/thesis/LLM_Contextual_Prompt_MT/data/muda_tagged/ted"
+    muda_tagged_path = f"{muda_path}/{tgt_lang}/ted_en{tgt_lang}.tags"
+    selected_preds = []
+    ids = [] # sent ids 
+
+    try:
+        with open(muda_tagged_path, 'r') as file:
+            tagged_data = json.load(file)
+
+    except FileNotFoundError:
+        print(f"File {muda_tagged_path} not found.")
+        tagged_data = None
+
+    sent_id = 0
+    n_tagged_sents = 0
+    for doc in tagged_data:
+        for sent in doc:
+            sent_id += 1
+            sent_checked = False
+            if sent_checked == False:
+                for token in sent:
+                    if token["tags"]:
+                        tagged_token = token["token"]
+                        tags = token["tags"]
+                        for tag in tags:
+                            if tag == criteria:
+                                if sent_id not in ids:
+                                    ids.append(sent_id)
+                                    n_tagged_sents += 1
+                                    sent_checked = True
+            
+                            
+    print ("n_sents", sent_id)
+    print ("n_tagged_sents", n_tagged_sents)                 
+    print ("ids", ids)
+    selected_preds= [preds[i-1] for i in ids]
+    selected_refs = [labels[i-1] for i in ids]
+    selected_srcs = [sources[i-1] for i in ids]
+
+    try:
+        if len(selected_preds) != len(selected_refs):
+            print ("length are same")
+    except NotImplementedError:
+        print ("The length are not matching")
+    
+    return selected_preds, selected_srcs, selected_refs
+
+            
+def select_all_instances(criteria, output_dir):
     
     try:
         with open(f'{output_dir}/without_postprocess.txt' , 'r') as file:
@@ -95,19 +147,19 @@ def select_instances(criteria, output_dir):
         # Initialize an empty string to accumulate lines before "#########" lines
         current_chunk = ""
         
-        current_id = 0
-        ids = []
+        #current_id = 0
+        #ids = []
 
         for line in lines:
             line = line.strip()
             
             if line == "##########":
-                current_id += 1
+                #current_id += 1
                 # Check if the current chunk is not empty and append it to the list
                 if current_chunk != "" :
                     #if criteria in current_chunk:
                     selected_preds.append(current_chunk)
-                    ids.append(current_id)
+                    #ids.append(current_id)
 
                 # Reset the current chunk
                 current_chunk = ""
@@ -123,12 +175,13 @@ def select_instances(criteria, output_dir):
         print(f"File {output_dir}/without_postprocess.txt not found.")
         selected_preds = []
 
+        
     # Select source/reference with the selected ids
-
     try:
         with open(f'{output_dir}/source.txt' , 'r') as file:
             sources = file.readlines()
-            selected_srcs = [sources[i-1] for i in ids]
+            #selected_srcs = [sources[i-1] for i in ids]
+            selected_srcs = sources
 
     except FileNotFoundError:
         print(f"File {output_dir}/sources.txt not found.")
@@ -137,12 +190,12 @@ def select_instances(criteria, output_dir):
     try:
         with open(f'{output_dir}/references.txt' , 'r') as file:
             references = file.readlines()
-            selected_refs = [references[i-1] for i in ids]
+            #selected_refs = [references[i-1] for i in ids]
+            selected_refs = references
 
     except FileNotFoundError:
         print(f"File {output_dir}/references.txt not found.")
         selected_refs = None
-
     
     try:
         if len(selected_preds) != len(selected_refs):
@@ -153,20 +206,20 @@ def select_instances(criteria, output_dir):
 
     return selected_preds, selected_srcs, selected_refs
 
+
 def evaluate_instances(
     api,
     model_checkpoint, 
     tokenizer, 
-    batch_size,  
-    max_new_tokens, 
-    max_length, 
     device, 
     tgt_lang,
     preds,
     sources,
     labels, 
     output_dir,
-    prompt_type
+    prompt_type,
+    metrics,
+    criteria
     ):
 
     results = []
@@ -180,20 +233,36 @@ def evaluate_instances(
         # Evaluate
         eval_preds = (np.asarray(preds), np.asarray(labels), np.asarray(sources))
         result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
+        print (decoded_preds, decoded_labels)
+        if criteria == None:
+            score_file_name = output_dir+'/test_score.txt'
+            translation_file_name = output_dir+'/translations.txt'
+        else:
+            categorized_dir = output_dir+f"/categorized/{criteria}"
+            if not os.path.exists(categorized_dir):
+                os.makedirs(categorized_dir, exist_ok=True)
+                
+            score_file_name = f"{categorized_dir}/{criteria}_test_score.txt"
+            translation_file_name = f"{categorized_dir}/{criteria}_translations.txt"
 
+            # Write source and reference of the tagged sents
+            with open(f"{categorized_dir}/{criteria}_src.txt",'w', encoding='utf8') as wf:
+                for src in decoded_input_ids:
+                    wf.write(src+'\n')
+            with open(f"{categorized_dir}/{criteria}_ref.txt",'w', encoding='utf8') as wf:
+                for label in decoded_labels:
+                    for str_label in label:
+                        wf.write(str_label.strip()+'\n')
 
-        with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
-            
-            bleu_score = result["bleu"]
-            comet_score = result["comet"]
-            gen_len_score = result["gen_len"]
+        # Write the averaged score
+        with open(score_file_name,'w', encoding='utf8') as wf:
+            for metric in ["sacrebleu", "comet"]:  
+                wf.write(f"{metric}: {result[metric]}\n") 
 
-            for metric, score in zip(["bleu", "comet", "gen_len"], [bleu_score, comet_score, gen_len_score]):
-                wf.write(f"{metric}: {score}\n") 
-
-        with open(output_dir+'/translations.txt','w', encoding='utf8') as wf:
+        # Write Translation Output after postprocess
+        with open(translation_file_name,'w', encoding='utf8') as wf:
             for pred in decoded_preds:
-                wf.write(pred.strip()+'\n')
+                wf.write(pred+'\n')
 
         """
         with open(output_dir+'/src_with_b.txt','w', encoding='utf8') as wf:
@@ -206,31 +275,40 @@ def evaluate_instances(
         """
 
 def main():
-    output_dir = read_output_dir()
-    tgt_lang, data_path, src_context_size, api, model_checkpoint, batch_size, k, prompt_type, max_new_tokens, max_length, cfg_name = read_config(output_dir)
-    
-    # Initialize Model
-    tokenizer = initialize_tokenizer(model_checkpoint, api)
-    criteria = None
-    preds, sources, labels = select_instances(criteria, output_dir)
+    output_dir, criteria = read_output_dir()
+    criteria_list = ["muda", "pronouns", "lexical_cohesion", "formality", "verb_form"]
 
-    # Generate and Evaluate
-    evaluate_instances(
-        api,
-        model_checkpoint, 
-        tokenizer, 
-        batch_size, 
-        max_new_tokens, 
-        max_length, 
-        device, 
-        tgt_lang,
-        preds,
-        sources,
-        labels, 
-        output_dir,
-        prompt_type
-        )
-    print ("Evaluation Successful")
+    if criteria == None or criteria in criteria_list:
+        tgt_lang, data_path, api, model_checkpoint, prompt_type, metrics, cfg_name = read_config(output_dir)
+        
+        # Initialize Model
+        tokenizer = initialize_tokenizer(model_checkpoint, api)
+        preds, sources, labels = select_all_instances(criteria, output_dir)
+
+        if criteria in criteria_list:
+            print (criteria)
+            preds, sources, labels = select_muda_tags(criteria, output_dir, tgt_lang, preds, sources, labels)
+
+        # Generate and Evaluate
+        evaluate_instances(
+            api,
+            model_checkpoint, 
+            tokenizer, 
+            device, 
+            tgt_lang,
+            preds,
+            sources,
+            labels, 
+            output_dir,
+            prompt_type,
+            metrics,
+            criteria
+            )
+        print ("Evaluation Successful")
+    
+    else:
+        print (f"No {criteria} found in this data.")
+
 
 if __name__ == "__main__":
     main()

@@ -74,7 +74,7 @@ def initialize_model(model_checkpoint, api):
                     model_name, model_addr = models[i]["name"], models[i]["address"]
                     print (model_name, model_addr)
                     model = Client("http://" + model_addr)
-                    model.timeout = 500 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
+                    model.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
                     tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
 
                 
