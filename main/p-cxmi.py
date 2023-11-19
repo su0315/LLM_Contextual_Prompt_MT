@@ -39,14 +39,30 @@ def take_continuous_correlation(larger_str, smaller_tokens):
                 
     return current_continuous_correlation if not larger_str else []
 
+
 def extract_continuous_correlations(larger_tokens, smaller_tokens, phe):
     relevant_items = []
     current_continuous_correlation = []
 
     for item in larger_tokens:
         for key, value in item.items():
-            if value and phe in value:
-                larger_str = key  # Convert to lowercase for case-insensitive comparison
+            if phe != "ALL":
+                if value and phe in value:
+                    ### repetition ###
+                    larger_str = key 
+                    continuous_correlation = take_continuous_correlation(larger_str, smaller_tokens) ###here
+                    if continuous_correlation:
+                        if current_continuous_correlation:  # Check if there's a previous correlation
+                            relevant_items.append(current_continuous_correlation)
+                            current_continuous_correlation = []  # Reset for the next correlation
+                        relevant_items.append(continuous_correlation)
+                        break  # Exit loop if a relevant item is found
+                    else:
+                        current_continuous_correlation.extend(continuous_correlation)
+                    ### r ###
+            else:
+                ### repetition ###
+                larger_str = key 
                 continuous_correlation = take_continuous_correlation(larger_str, smaller_tokens) ###here
                 if continuous_correlation:
                     if current_continuous_correlation:  # Check if there's a previous correlation
@@ -56,6 +72,8 @@ def extract_continuous_correlations(larger_tokens, smaller_tokens, phe):
                     break  # Exit loop if a relevant item is found
                 else:
                     current_continuous_correlation.extend(continuous_correlation)
+                ### r ###
+
 
     if current_continuous_correlation:  # Check if there's a continuous correlation at the end
         relevant_items.append(current_continuous_correlation)
@@ -111,7 +129,7 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
                             phenomena.append(phenomenon)
                 tagged_tokens.append(tagged_token_in_sent) # List where each element has list of tagged token in sent
         
-
+    phenomena.append("ALL") # calculate per-token cxmi for all tokens in the data
     phe_to_scores = {}
     for phe in phenomena:
         bc_p_scores = {}
@@ -169,15 +187,13 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
             #print (tagged_token, phe, p_sent_str)
             bc_p_scores[b_or_c]=all_p_scores
         phe_to_scores[phe] = bc_p_scores
-    # print (phe_to_scores)
-    #print (len(phe_to_scores["formality"]["base"]), len(phe_to_scores["formality"]["context"]))
-
     
         # for each phenomena, calculate p_cxmi
         base_sent_scores = np.array([score for score in phe_to_scores[phe]["base"]])
         context_sent_scores = np.array([score for score in phe_to_scores[phe]["context"]])
         
         if len(base_sent_scores) > 0 and len(context_sent_scores) > 0:
+            print (f"number of {phe}", (len(base_sent_scores), len(context_sent_scores)))
             p_cxmi = (np.array(base_sent_scores) - np.array(context_sent_scores))
             max_p_cxmi_id = np.argmax(-p_cxmi)
             max_p_cxmi_score = -p_cxmi[max_p_cxmi_id]
@@ -185,13 +201,15 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
             print (phe, p_cxmi)
         else:
             print (f"{phe} has no value")
+            print (len(base_sent_scores), len(context_sent_scores))
             p_cxmi = 0
             max_p_cxmi_score = 0
             max_p_cxmi_id = 0
     
         with open(out_path, "a") as wf:
-            wf.write(f"P-CXMI ({phe}): {p_cxmi} (MAX_CXMI: {max_p_cxmi_score} (sent id: {max_p_cxmi_id})) \n")
-    
+            wf.write(f"P-CXMI ({phe}):\n{p_cxmi} (MAX_CXMI: {max_p_cxmi_score} (sent id: {max_p_cxmi_id}))\nnumber of {phe}:{(len(base_sent_scores), len(context_sent_scores))}\n\n")
+        # print (phe_to_scores)
+        #print (len(phe_to_scores["lexical_cohesion"]["base"]), len(phe_to_scores["lexical_cohesion"]["context"])) # ??
     return p_cxmi, max_p_cxmi_score, max_p_cxmi_id
         
     
