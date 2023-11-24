@@ -3,6 +3,7 @@ from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
 import json
 import re
+import os
 
 def read_args():
     parser = ArgumentParser(description='Read arguments')
@@ -41,6 +42,7 @@ def take_continuous_correlation(larger_str, smaller_tokens):
 
 
 def extract_continuous_correlations(larger_tokens, smaller_tokens, phe):
+    no_counted=[]
     relevant_items = []
     current_continuous_correlation = []
 
@@ -58,6 +60,9 @@ def extract_continuous_correlations(larger_tokens, smaller_tokens, phe):
                         relevant_items.append(continuous_correlation)
                         break  # Exit loop if a relevant item is found
                     else:
+                        #print ("not counted tagged token:", larger_str)
+                        no_counted_token=larger_str
+                        no_counted.append(no_counted_token)
                         current_continuous_correlation.extend(continuous_correlation)
                     ### r ###
             else:
@@ -71,14 +76,14 @@ def extract_continuous_correlations(larger_tokens, smaller_tokens, phe):
                     relevant_items.append(continuous_correlation)
                     break  # Exit loop if a relevant item is found
                 else:
+                    no_counted_token=larger_str
+                    no_counted.append(no_counted_token)
                     current_continuous_correlation.extend(continuous_correlation)
                 ### r ###
-
-
     if current_continuous_correlation:  # Check if there's a continuous correlation at the end
         relevant_items.append(current_continuous_correlation)
 
-    return relevant_items
+    return relevant_items, no_counted
 
 
 def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
@@ -87,7 +92,7 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
         text_to_score=[]
         with open(f"{in_path}/ref_scores_details.txt", "r") as rf:
             rf = rf.readlines()
-            for scores_sent in rf:#TODO
+            for scores_sent in rf:
                 score_detail = scores_sent.strip().split(", ")
                 logprob_pattern = re.compile(r'logprob=(-?\d+\.\d+)')
                 text_pattern = re.compile(r"text='([^']+)'")
@@ -116,7 +121,7 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
      
         docs = json.load(rf)
        
-        for doc in docs:#TODO
+        for doc in docs:
             for sent_id, sent in enumerate(doc):
                 tagged_token_in_sent = []
                 for token_pos, token in enumerate(sent):
@@ -131,63 +136,36 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
         
     phenomena.append("ALL") # calculate per-token cxmi for all tokens in the data
     phe_to_scores = {}
+    
     for phe in phenomena:
+        no_counted_tokens = []
         bc_p_scores = {}
         for b_or_c in list(bc_text_to_score.keys()):
             all_p_scores = []
             for tagged_token_per_sent, token_or_letter_score in zip(tagged_tokens, bc_text_to_score[b_or_c]): # Check each sent in muda tag data and prediction data
+                #no_counted_tokens_per_sent = []
                 #if tagged_token_per_sent != []: #
                     #print ("muda tagged token per sent", tagged_token_per_sent)#larger_tokens
                     #print ("llama token per sent", token_or_letter_score)#smaller_tokens
                 larger_tokens=tagged_token_per_sent
                 smaller_tokens=token_or_letter_score
-                result = extract_continuous_correlations(larger_tokens, smaller_tokens, phe)
-                n_smaller_tokens = len([dictionary for list in result for dictionary in list])
-                if n_smaller_tokens > 0:
-                    p_score = (sum([smaller_token_score for list in result for dictionary in list for smaller_token, smaller_token_score in dictionary.items()])) / n_smaller_tokens
-                    #print (len([dictionary for list in result for dictionary in list]))
-                    #print (p_score)
+                result, no_counted= extract_continuous_correlations(larger_tokens, smaller_tokens, phe)
+                if no_counted:
+                    no_counted_tokens.append(no_counted)
+                #if phe=="ALL" and len([sub_token_list for sub_token_list in result]) != len(larger_tokens):
+                    #print("n_extracted_tokens", len([sub_token_list for sub_token_list in result]))
+                    #print ("n_tagged_tokens", len(larger_tokens))
+                    #n_smaller_tokens = len([dictionary for list in result for dictionary in list])
+                for p_token in result: # Sum and Store p_scores per tokens, not per sentence!!!!
+                    p_score = (sum([smaller_token_score for dictionary in p_token for smaller_token, smaller_token_score in dictionary.items()]))
                     all_p_scores.append(p_score)
 
-        #print (phe)
-        #print (all_p_scores)
-        #print (len(all_p_scores)) #TODO. number of phenomena tokens are not matching to muda data, roughly 100-500 smaller
-
-                    """
-                    p_sent_str= ""
-                    for ref_token_to_score_dict in token_or_letter_score: # TODO # Smaller Unit token (llama tokenizer)
-                        ref_token, score = list(ref_token_to_score_dict.items())[0]
-                        p_sent_str += ref_token
-                        #print (p_sent_str)
-                        print ("ref_token", ref_token)
-                    
-                    for tagged_token_to_tag in tagged_token_per_sent: # Larger Unit token (MuDA Tag)
-                        
-                        tagged_token, tag = list(tagged_token_to_tag.items())[0]
-                        print ("tagged_token", tagged_token)
-                        
-                        #print (p_sent_str)
-                        #print (tagged_token, phe, p_sent_str)
-                        #print (phe, tag)
-
-                        # compare tagged_token (MuDA tokenizer) and ref_token (Llma tokenizer)
-                        
-                        
-                        if tagged_token in p_sent_str and  phe in tag:
-                            p_scores = 0
-                            n_letter_in_token = 0
-                            if ref_token in tagged_token:
-                                print ("yes1")
-                                n_letter_in_token += 1
-                                p_scores += score
-                                p_scores = p_scores / n_letter_in_token
-                                #print (p_scores)
-                                all_p_scores.append(p_scores)
-                    """         
-            #print (tagged_token, phe, p_sent_str)
+                #print (len(all_p_scores)) . number of phenomena tokens are not matching to muda data, roughly 100-500 smaller
+                #no_counted_tokens.append(no_counted_tokens_per_sent)
             bc_p_scores[b_or_c]=all_p_scores
         phe_to_scores[phe] = bc_p_scores
-    
+            
+        
         # for each phenomena, calculate p_cxmi
         base_sent_scores = np.array([score for score in phe_to_scores[phe]["base"]])
         context_sent_scores = np.array([score for score in phe_to_scores[phe]["context"]])
@@ -205,12 +183,27 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
             p_cxmi = 0
             max_p_cxmi_score = 0
             max_p_cxmi_id = 0
-    
-        with open(out_path, "a") as wf:
-            wf.write(f"P-CXMI ({phe}):\n{p_cxmi} (MAX_CXMI: {max_p_cxmi_score} (sent id: {max_p_cxmi_id}))\nnumber of {phe}:{(len(base_sent_scores), len(context_sent_scores))}\n\n")
-        # print (phe_to_scores)
-        #print (len(phe_to_scores["lexical_cohesion"]["base"]), len(phe_to_scores["lexical_cohesion"]["context"])) # ??
+
+        category_dir = out_path+f"/categorized/{phe}"
+        if not os.path.exists(category_dir):
+            os.makedirs(category_dir)
+        with open(out_path+f"/categorized/{phe}/p-cxmi.txt", "a") as wf:
+            wf.write(f"P-CXMI ({phe}):\n{p_cxmi} (MAX_CXMI: {max_p_cxmi_score} (sent id: {max_p_cxmi_id}))\n")
+            wf.write(f"number of {phe}:{(len(base_sent_scores), len(context_sent_scores))} \n")
+            wf.write(f"Not Counted Tokens of {phe}: {int(len([no_counted_token for sent in no_counted_tokens for no_counted_token in sent])/2)}\n")
+            for no_counted_sent in no_counted_tokens[:int(len(no_counted_tokens)/2)]:
+                """
+                for token in no_counted_tokens_per_sent:
+                    if token:
+                        wf.write(f"{token}\n")
+                """
+                if no_counted_sent:
+                    wf.write(f"{no_counted_sent}\n")
+                    
+            wf.write("\n")
+
     return p_cxmi, max_p_cxmi_score, max_p_cxmi_id
+
         
     
 def main():
