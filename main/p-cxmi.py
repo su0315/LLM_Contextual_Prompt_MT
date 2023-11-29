@@ -97,16 +97,40 @@ def decode_byte(smaller_tokens, output_dir, phe):
             smaller_str = smaller_key
             if '<0x' in smaller_str:
                 #print (smaller_str, smaller_value)
-                if continuous == False:
+                
+                if continuous == False: #TODO: decode if possible as early as possible
                     continuous_hex = []
                     continuous_hex_score = []
+                
                 hex = smaller_str.replace('<0x', '').replace('>', '')
                 hex = (int(hex, 16))
                 hex_score = smaller_value
                 continuous_hex.append(hex)
                 continuous_hex_score.append(hex_score)
+                byte_string = bytes(continuous_hex)
                 
-                
+                try:    
+                    decoded_string = byte_string.decode('utf-8')
+                    #print (decoded_string)
+                    if isinstance(decoded_string, str):
+                        decoded_string_score = sum(continuous_hex_score)
+                        decoded_item = {decoded_string:decoded_string_score}
+                        
+                        decoded_smaller_tokens.append(decoded_item)
+                        if phe == "ALL":
+                            with open(output_dir+"/mapped_token", "a") as wf:
+                                wf.write(f"{decoded_item}\n")
+                        #decoded_smaller_tokens.append(smaller_item)
+                        continuous=False
+                        
+                except UnicodeDecodeError:
+                    continuous=True
+                    continue
+                    
+            else:
+                decoded_smaller_tokens.append(smaller_item)  
+            
+            """
                 continuous = True
             else:
                 if continuous == True:
@@ -136,7 +160,8 @@ def decode_byte(smaller_tokens, output_dir, phe):
                             wf.write(f"{decoded_item}\n")
                     decoded_smaller_tokens.append(smaller_item)
                 else:
-                    decoded_smaller_tokens.append(smaller_item)           
+                    decoded_smaller_tokens.append(smaller_item)  
+                """         
     #print (smaller_tokens)
     return decoded_smaller_tokens
 
