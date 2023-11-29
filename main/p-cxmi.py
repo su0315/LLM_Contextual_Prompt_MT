@@ -24,21 +24,25 @@ def is_substring(larger_str, smaller_str):
 
 def take_continuous_correlation(larger_str, smaller_tokens):
     current_continuous_correlation = []
-    original_larger_str = larger_str
+    checked_larger_str = larger_str
     for smaller_item in smaller_tokens:
         for smaller_key, smaller_value in smaller_item.items():
-            smaller_str = smaller_key  # Convert to lowercase for case-insensitive comparison            
-            if is_substring(larger_str, smaller_str):
-                current_continuous_correlation.append({smaller_key: smaller_value})
-                larger_str = larger_str[len(smaller_str):]  # Remove matched substring from larger_str
-                if current_continuous_correlation and larger_str == "":
+            smaller_str = smaller_key
+            smaller_score = smaller_value # Convert to lowercase for case-insensitive comparison            
+            if is_substring(checked_larger_str, smaller_str):
+                current_continuous_correlation.append({smaller_str: smaller_score})
+                checked_larger_str = checked_larger_str[len(smaller_str):]  # Remove matched substring from larger_str
+                if current_continuous_correlation and checked_larger_str == "":
                     return current_continuous_correlation
             else:
-                larger_str = original_larger_str  # Reset to the original larger_str
-                if current_continuous_correlation and larger_str !="": # if couldn_t complete the larger_str correlation, remove the partial correlation
+                #larger_str = original_larger_str  # Reset to the original larger_str
+                if current_continuous_correlation and checked_larger_str !="": # if couldn_t complete the larger_str correlation, remove the partial correlation
                     current_continuous_correlation.remove(current_continuous_correlation[-1])
-                
-    return current_continuous_correlation if not larger_str else []
+    if checked_larger_str:
+        print ("original_larger", larger_str)  # TODO: Thre are lots of missed case already here, why
+        print ("smaller", smaller_tokens)
+    #print (current_continuous_correlation)
+    return current_continuous_correlation if not checked_larger_str else []
 
 
 def extract_continuous_correlations(larger_tokens, smaller_tokens, phe):
@@ -85,6 +89,56 @@ def extract_continuous_correlations(larger_tokens, smaller_tokens, phe):
 
     return relevant_items, no_counted
 
+def decode_byte(smaller_tokens, output_dir, phe):
+    continuous = False
+    decoded_smaller_tokens=[]
+    for smaller_item in smaller_tokens:
+        for smaller_key, smaller_value in smaller_item.items():
+            smaller_str = smaller_key
+            if '<0x' in smaller_str:
+                #print (smaller_str, smaller_value)
+                if continuous == False:
+                    continuous_hex = []
+                    continuous_hex_score = []
+                hex = smaller_str.replace('<0x', '').replace('>', '')
+                hex = (int(hex, 16))
+                hex_score = smaller_value
+                continuous_hex.append(hex)
+                continuous_hex_score.append(hex_score)
+                
+                
+                continuous = True
+            else:
+                if continuous == True:
+                    continuous=False
+                    byte_string = bytes(continuous_hex)
+                    decoded_string = byte_string.decode('utf-8')
+                    
+                    #print (decoded_string)
+                    
+                    #print (continuous_hex_score)
+                    decoded_string_score = sum(continuous_hex_score)
+                    #print (decoded_string_score)
+                    
+                    decoded_item = {decoded_string:decoded_string_score}
+                    #smaller_tokens[smaller_tokens.index(smaller_item)] = decoded_item
+                    
+                    #for i in range(len(continuous_hex)):# Iterate over the left side of the last continuous_hex index
+                        #smaller_tokens.pop(smaller_tokens.index(smaller_item)-i)
+                        #print (decoded_item)
+                        #print (smaller_item)
+                        #print (smaller_tokens.index(smaller_item))
+                        #print (int(smaller_tokens.index(smaller_item)-i-1)) # current index is after continuous hex
+                        #smaller_tokens[smaller_tokens.index(smaller_item)-i-1] = decoded_item
+                    decoded_smaller_tokens.append(decoded_item)
+                    if phe == "ALL":
+                        with open(output_dir+"/mapped_token", "a") as wf:
+                            wf.write(f"{decoded_item}\n")
+                    decoded_smaller_tokens.append(smaller_item)
+                else:
+                    decoded_smaller_tokens.append(smaller_item)           
+    #print (smaller_tokens)
+    return decoded_smaller_tokens
 
 def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
     bc_text_to_score = {} # map base or context
@@ -112,6 +166,7 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
             bc_text_to_score["context"] = text_to_score
         elif in_path == in_path_base:
             bc_text_to_score["base"] = text_to_score
+            
 
         #base_sent_scores = np.array([score for score in scores_sent.strip().split(", ")])
     
@@ -149,13 +204,16 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
                     #print ("llama token per sent", token_or_letter_score)#smaller_tokens
                 larger_tokens=tagged_token_per_sent
                 smaller_tokens=token_or_letter_score
-                result, no_counted= extract_continuous_correlations(larger_tokens, smaller_tokens, phe)
+                #print ("smallerrrrr", smaller_tokens)
+                # TODO. Translate smaller_tokens to non-byte encoding sentence
+                decoded_smaller_tokens = decode_byte(smaller_tokens, out_path, phe)
+                #print (decoded_smaller_tokens)
+                
+                
+                result, no_counted= extract_continuous_correlations(larger_tokens, decoded_smaller_tokens, phe)
                 if no_counted:
                     no_counted_tokens.append(no_counted)
-                #if phe=="ALL" and len([sub_token_list for sub_token_list in result]) != len(larger_tokens):
-                    #print("n_extracted_tokens", len([sub_token_list for sub_token_list in result]))
-                    #print ("n_tagged_tokens", len(larger_tokens))
-                    #n_smaller_tokens = len([dictionary for list in result for dictionary in list])
+                
                 for p_token in result: # Sum and Store p_scores per tokens, not per sentence!!!!
                     p_score = (sum([smaller_token_score for dictionary in p_token for smaller_token, smaller_token_score in dictionary.items()]))
                     all_p_scores.append(p_score)
@@ -165,14 +223,14 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
             bc_p_scores[b_or_c]=all_p_scores
         phe_to_scores[phe] = bc_p_scores
             
-        
+    
         # for each phenomena, calculate p_cxmi
         base_sent_scores = np.array([score for score in phe_to_scores[phe]["base"]])
         context_sent_scores = np.array([score for score in phe_to_scores[phe]["context"]])
         
         if len(base_sent_scores) > 0 and len(context_sent_scores) > 0:
             print (f"number of {phe}", (len(base_sent_scores), len(context_sent_scores)))
-            p_cxmi = (np.array(base_sent_scores) - np.array(context_sent_scores))
+            p_cxmi = (np.array(base_sent_scores) - np.array(context_sent_scores)) # TODO: ValueError: operands could not be broadcast together with shapes (280,) (281,) 
             max_p_cxmi_id = np.argmax(-p_cxmi)
             max_p_cxmi_score = -p_cxmi[max_p_cxmi_id]
             p_cxmi = - (np.mean(p_cxmi))
@@ -184,19 +242,14 @@ def p_cxmi(in_path_context, in_path_base, out_path, muda_tag_path):
             max_p_cxmi_score = 0
             max_p_cxmi_id = 0
 
-        category_dir = out_path+f"/categorized/{phe}"
+        category_dir = out_path+f"/categorized_test/{phe}"
         if not os.path.exists(category_dir):
             os.makedirs(category_dir)
-        with open(out_path+f"/categorized/{phe}/p-cxmi.txt", "a") as wf:
+        with open(category_dir+f"/p-cxmi.txt", "a") as wf:
             wf.write(f"P-CXMI ({phe}):\n{p_cxmi} (MAX_CXMI: {max_p_cxmi_score} (sent id: {max_p_cxmi_id}))\n")
             wf.write(f"number of {phe}:{(len(base_sent_scores), len(context_sent_scores))} \n")
             wf.write(f"Not Counted Tokens of {phe}: {int(len([no_counted_token for sent in no_counted_tokens for no_counted_token in sent])/2)}\n")
             for no_counted_sent in no_counted_tokens[:int(len(no_counted_tokens)/2)]:
-                """
-                for token in no_counted_tokens_per_sent:
-                    if token:
-                        wf.write(f"{token}\n")
-                """
                 if no_counted_sent:
                     wf.write(f"{no_counted_sent}\n")
                     
