@@ -4,13 +4,13 @@ export PYTHONPATH=.:$PYTHONPATH
 
 #data_dir=/mnt/data-poseidon/sumire/thesis/running
 model_type=Llama-2-70b-instruct-v2-usas-zs-p1-nsplit
-langs="ar ko ja zh"
-contexts="1-6 1-7"
+langs="fr"
+contexts="1-5"
 
 for lang in $langs; do
     for context in $contexts; do
         data_dir=/mnt/data-poseidon/sumire/thesis/$context
-        in_path_context=${data_dir}/en-${lang}/cxmi-${model_type}-${lang}-${context} # test
+        in_path_context=${data_dir}/en-${lang}/${model_type}-${lang}-${context} # test
         echo $in_path_context
         python /home/sumire/thesis/LLM_Contextual_Prompt_MT/main/p-cxmi.py \
             --in_path_context ${in_path_context} \

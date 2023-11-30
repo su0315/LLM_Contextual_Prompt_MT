@@ -358,7 +358,7 @@ def evaluate_mt(
                 
                 # Write the averaged score
                 with open(output_dir+'/test_score.txt','a', encoding='utf8') as wf:
-                    for metric in ["sacrebleu", "comet"]:  
+                    for metric in ["sacrebleu"]:#,comet  
                         wf.write(f"{metric}: {result[metric]}\n") 
 
                 with open(output_dir+'/translations.txt','a', encoding='utf8') as wf:

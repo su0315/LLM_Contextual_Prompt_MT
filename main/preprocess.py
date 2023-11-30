@@ -70,6 +70,10 @@ def select_context(context_size, doc_input, current_idx, sep_token, prompt_type)
     
     return _context 
 
+"""
+# TODO 
+def select_style(context_size, doc_input, current_idx, sep_token, prompt_type):
+"""
 
 def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
 
@@ -91,6 +95,7 @@ def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt
         context_inst = f"Given context:{sep_token}" 
     elif prompt_type == 2:
         context_inst = ""
+    
 
     """
     if classified: # TODO load class for each line and put zip in sentence loop
@@ -114,7 +119,8 @@ def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt
                     _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
                 elif tgt_context_size >= 1:
                     _context = select_context(tgt_context_size, doc_tgt_input, idx, sep_token, prompt_type)
-                
+                    # TODO: Optionally put style info instead of preceding sentences
+                                
                 if prompt_type==1:
                     #concat_input = _context + prompt + ip + after_ip 
                     #inputs.append(concat_input)

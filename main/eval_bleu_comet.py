@@ -56,7 +56,7 @@ def read_config(output_dir):
     #max_new_tokens = int(config.get('max_new_tokens', None))
     prompt_type = int(config.get('prompt_type', 1))
     #max_length = int(config.get('max_length', None))
-    metrics = ["comet", "sacrebleu"]
+    metrics = ["comet"]#, "sacrebleu"
     cfg_name = config.get('cfg_name', None)
     #k = int(config.get('k', None))
 
@@ -234,7 +234,7 @@ def evaluate_instances(
         eval_preds = (np.asarray(preds), np.asarray(labels), np.asarray(sources))
         result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
         print (decoded_preds, decoded_labels)
-        if criteria == None:
+        if criteria == "None":
             score_file_name = output_dir+'/test_score.txt'
             translation_file_name = output_dir+'/translations.txt'
         else:
@@ -255,8 +255,8 @@ def evaluate_instances(
                         wf.write(str_label.strip()+'\n')
 
         # Write the averaged score
-        with open(score_file_name,'w', encoding='utf8') as wf:
-            for metric in ["sacrebleu", "comet"]:  
+        with open(score_file_name,'a', encoding='utf8') as wf:
+            for metric in [ "comet"]:  #"sacrebleu",
                 wf.write(f"{metric}: {result[metric]}\n") 
 
         # Write Translation Output after postprocess
@@ -278,7 +278,7 @@ def main():
     output_dir, criteria = read_output_dir()
     criteria_list = ["muda", "pronouns", "lexical_cohesion", "formality", "verb_form"]
 
-    if criteria == None or criteria in criteria_list:
+    if criteria == "None" or criteria in criteria_list:
         tgt_lang, data_path, api, model_checkpoint, prompt_type, metrics, cfg_name = read_config(output_dir)
         
         # Initialize Model
