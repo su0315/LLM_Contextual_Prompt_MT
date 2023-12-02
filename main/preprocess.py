@@ -403,133 +403,31 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
 
     return inputs, labels, sources, few_shots
     
+def postprocess_summ_context(line):#TODO
+    line = line.strip()
+    if line == ".":
+        pp_summ_context = ""
+        
+    else:
+        pp_summ_context=line.replace(".", "\n")
+        
+    return pp_summ_context
+
 def preprocess_function_summ_iwslt(data, tgt_lang, src_context_size, tgt_context_size, num_summary_sentences, prompt_type, api, max_length, summarized_contexs):
     target_language = {"ja": "Japanese", "de":"German", "fr":"French", "ko": "Korean", "ar": "Arabic", "zh":"Chinese"}
     sep_token = "\n"
     
-    data_name = 'iwslt'
-    context_dir = "/mnt/data-poseidon/sumire/thesis/summ_rouge" f"/{src_context_size+1}-1to{num_summary_sentences+1}-1/transforemersum-{summarized_contexs}-{data_name}-{src_context_size+1}-1to{num_summary_sentences+1}-1"
-    with open(f'{context_dir}cond/summarized_contexts.txt' , 'r') as file:
-        context_intersec = [line for line in file]
-    """
-    # Take context.txt file and choose one example out of duplications and store in context_list #
-    if summarized_contexs =="distilroberta" and type(src_context_size) != str:
-        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/{data_name}/transforemersum-distilroberta-ctpro-{src_context_size+1}-1"
-        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
-            context_intersec = [line for line in file]
-    elif summarized_contexs =="distilroberta" and type(src_context_size) == "ante-1":
-        print ("ante-1")
-        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/{data_name}/transforemersum-distilroberta-ctpro-ante-1"
-        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
-            context_intersec = [line for line in file]
-    elif summarized_contexs =="distilroberta-2":
-        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/{data_name}/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to3-1"
-        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to3-1")
-        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
-            context_intersec = [line for line in file]
-    elif summarized_contexs =="distilroberta-3":
-        context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/{data_name}/transforemersum-distilroberta-{data_name}-{src_context_size+1}-1to4-1"
-        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to4-1")
-        with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
-            context_intersec = [line for line in file]
-    elif summarized_contexs =="distilroberta-4":
-        context_dir = f"/mnt/data-poseidon/sumire/thesis/summ_rouge/{src_context_size+1}-1to5-1/transforemersum-distilroberta-{data_name}-{src_context_size+1}-1to5-1"
-        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to5-1")
-        with open(f'{context_dir}cond/summarized_contexts.txt' , 'r') as file:
-            context_intersec = [line for line in file]
-    elif src_context_size != 0:
-        if src_context_size == "ante" or src_context_size == "1-ante":
-            max_c = 26 # max context size (max antecedent distant)
+    data_name = 'ted'
+    if src_context_size > 0:
+        context_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/{data_name}/en-{tgt_lang}/{src_context_size+1}-1to{num_summary_sentences+1}-1/transforemersum-{summarized_contexs}-{data_name}-{src_context_size+1}-1to{num_summary_sentences+1}-1"
+    elif tgt_context_size > 0:
+        context_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/{data_name}/en-{tgt_lang}/1-{tgt_context_size+1}to1-{num_summary_sentences+1}/transforemersum-{summarized_contexs}-{data_name}-1-{tgt_context_size+1}to1-{num_summary_sentences+1}"
 
-        else:
-            max_c = src_context_size
-
-        with open(f'{data_path}/contrapro.context.en' , 'r') as file:
-            context_list = [line.strip() for line in file]
-            
-            #context_intersec = [context_list[i] for i in indices_in_src_list]
-            #print ("context_list", len(context_list)) # 36031
-    
-        contexts = []
-        print ("n_sent", n_sent) # 12011
-        print (max_c)
-        
-        # Choose only one chunk of context out of three chunks repitition 
-        #for i, alpha in zip(range(n_sent_intersec)[:5], ante_intersec[:5]):
-        for i in range(n_sent): # 12011
-            #print (i)
-            print (i*3*max_c, i*3*max_c+max_c)
-            sentence_context = context_list[i*3*max_c:i*3*max_c+max_c]
-            #sentence_context = sep_token.join(context_list[i*3*max_c:i*3*max_c+max_c])
-            #if sentence_context != "":
-                #sentence_context += sep_token
-            #print (alpha)
-            #print (sentence_context)
-            #ante_context = sentence_context[-alpha]
-            contexts.append(sentence_context)
-
-        print ("contexts length", len(contexts)) # 12011   
-        context_chunks_intersection = [contexts[i] for i in indices_in_src_list] # 11084
-        print ("context_chunks_intersection", len(context_chunks_intersection))
-
-        # # Sampling sentences (where antecedent < 2)
-        # # 1. pop ante 0 : take ante non-zero indices and apply src and tgt 
-        # print ("ante_intersec", len(ante_intersection)) # 11085
-        # indices_intersec_non_zero_ante = [i for i, ante in enumerate(ante_intersection) if ante != 0]
-        # ante_intersec_non_zero = [ante_intersection[i] for i in indices_intersec_non_zero_ante]
-        # print ("ante_intersec_non_zero", len(ante_intersec_non_zero)) # 8828
-        # src_intersec_non_zero_ante = [src_intersection[i] for i in indices_intersec_non_zero_ante]
-        # print ("src_intersec3", len(src_intersec_non_zero_ante)) # 8828
-        # tgt_intersec_non_zero_ante = [tgt_intersection[i] for i in indices_intersec_non_zero_ante]
-        
-        # Sampling sentences (where antecedent < 2) for context 
-        # 1. pop ante 0 : take ante non-zero indices and apply context
-        context_chunks_intersec_non_zero_ante = [context_chunks_intersection[i] for i in indices_intersec_non_zero_ante]
-        
-        # # subsample 1000 examples indices from antecedent distance = 1  
-        # sampled_indices = sample_example(criteria="ante==1", original_data=ante_intersec_non_zero, original_indices= [i for i, item in enumerate(ante_intersec_non_zero)], n_samples=1000) # sample 1 (take 1000 of antecedent distance 1)
-        # sampled_indices = sample_example(criteria="ante==2", original_data=[ante_intersec_non_zero[i] for i in sampled_indices], original_indices= sampled_indices, n_samples=1000) # sample 2 (take 1000 of antecedent distance 2)
-        # # Apply sampled indices for src and tgt
-        # sampled_src_intersec = [src_intersec_non_zero_ante[i] for i in sampled_indices]
-        # sampled_tgt_intersec = [tgt_intersec_non_zero_ante[i] for i in sampled_indices]
-        # print (sampled_context_chunks_intersec[:5])
-        # src_intersec = sampled_src_intersec # sampled
-        # tgt_intersec = sampled_tgt_intersec # sammpled
-        
-        # Apply sampled indices for context and antecedent
-        sampled_context_chunks_intersec = [context_chunks_intersec_non_zero_ante[i] for i in sampled_indices]
-        print (sampled_context_chunks_intersec[:5])
-        sampled_ante_intersec = [ante_intersec_non_zero[i] for i in sampled_indices]
-        context_chunks_intersec = sampled_context_chunks_intersec # sampled
-        ante_intersec_non_zero = sampled_ante_intersec # sampled
-        print ("after all sampling", len(src_intersec), len(tgt_intersec), len(context_chunks_intersec), len(ante_intersec_non_zero)) # 3290, 3290, 3290, 3290 for sample ante1,  3132 for sample 1+ sample2 
-        
-        # Context with Antedecedent Distance concatenation
-        context_intersec = []
-        if src_context_size == "1-ante":
-            # Version 1: Choose only an antecedent sentence as a context sentence
-            for sent_context, alpha in zip(context_chunks_intersec, ante_intersec_non_zero):
-                ante_context = sent_context[-alpha]
-                # if alpha != 0: 
-                ante_context += sep_token
-                context_intersec.append(ante_context)
-
-        elif src_context_size == "ante": 
-            # Version 2: Choose preceding sentences after antecedent as context sentences
-            print ("Version 2!")
-            for sent_context, alpha in zip(context_chunks_intersec, ante_intersec_non_zero):
-                ante_contexts = sep_token.join(sent_context[-alpha:])
-                ante_contexts += sep_token
-                context_intersec.append(ante_contexts)
-
-        else: 
-            # (Version 3:) Choose all preceding sentences as context sentences
-            for sent_context in context_chunks_intersec:
-                print ("check sent_context", sent_context)
-                prec_contexts = sep_token.join(sent_context)
-                prec_contexts += sep_token
-                context_intersec.append(prec_contexts)
-    """
+    context_intersec=[]
+    with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
+        for line in file:
+            postprocessed_summ_context = postprocess_summ_context(line)
+            context_intersec.append(postprocessed_summ_context)
             
     ############ common ###################
     inputs = []
@@ -553,14 +451,6 @@ def preprocess_function_summ_iwslt(data, tgt_lang, src_context_size, tgt_context
         concat_input = "### User:\n" + context_inst + _context + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
         inputs.append(concat_input)
 
-    """
-    else:
-        print (len(src_intersec), len(tgt_intersec)) # 3132 for sample 1 + sample 2
-        for ip, tgt in zip(src_intersec, tgt_intersec):
-            concat_input = "### User:\n" + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
-            inputs.append(concat_input)
-            labels.append(tgt)
-    """
     sources = src_intersec
     few_shots = ""
 

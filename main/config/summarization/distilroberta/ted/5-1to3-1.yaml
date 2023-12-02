@@ -18,4 +18,4 @@ generic:
   api: True
   device: 6
   num_summary_sentences: 2
-  cfg_name : transforemersum-distilroberta-iwslt-5-1to3-1
+  cfg_name : transforemersum-distilroberta-ted-5-1to3-1

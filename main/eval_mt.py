@@ -1,4 +1,6 @@
-from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, XGLMConfig, LlamaTokenizer, LlamaForCausalLM
+from transformers.models.llama.tokenization_llama import LlamaTokenizer # Adapted for new version transformers 
+from transformers.models.llama.modeling_llama import LlamaForCausalLM
+from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, XGLMTokenizerFast, XGLMConfig
 from datasets import load_dataset, concatenate_datasets, load_from_disk
 import evaluate
 import numpy as np
@@ -8,7 +10,7 @@ import os
 from transformers import DataCollatorForLanguageModeling
 from functools import partial
 import json
-from main.preprocess import preprocess_function, preprocess_function_contrapro, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd
+from main.preprocess import preprocess_function, preprocess_function_contrapro, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd, preprocess_function_summ_iwslt
 from main.metrics import compute_metrics
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
@@ -47,6 +49,8 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.api", type=bool, default=False, metavar="FILE", help="Whether using text generation api or not")
     parser.add_argument('--generic.metrics',  type=str, help = "Comma-separated list of strings", default= "sacrebleu,comet,cxmi", required=False)
     parser.add_argument('--generic.classified_path',  type=str, help = "The path to the classified label for context if any", default= None, required=False)
+    parser.add_argument('--generic.num_summary_sentences',  type=int, help = "The number of summarized output sentence of the contexts", default= 1, required=False)
+
     return parser
 
 
@@ -61,12 +65,18 @@ def initialize_model(model_checkpoint, api):
         model.config.pad_token_id = tokenizer.pad_token_id
     
     elif api is True:
-        from text_generation import Client
+        from text_generation.client import Client
 
         TGI_CENTRAL_ADDRESS="localhost:8765"
-        models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
-        
-        
+        #models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
+        #models = Client(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
+        models = Client(f"http://{TGI_CENTRAL_ADDRESS}")
+        print (models)
+        print (models["name"], models["address"])
+        model.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
+        tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
+        """ 
+        # TODO: adapt for new api 
         if "Llama-2-70b-instruct-v2" in model_checkpoint:
             model_name = None
             for i in range(len(models)):
@@ -76,12 +86,10 @@ def initialize_model(model_checkpoint, api):
                     model = Client("http://" + model_addr)
                     model.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
                     tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
-
-                
-            if model_name is None:
-                raise Exception('model upstage/Llama-2-70b-instruct-v2 is not available.')
-
-                    
+        if model_name is None:
+            raise Exception('model upstage/Llama-2-70b-instruct-v2 is not available.')
+        """
+            
 
 
     elif "xglm" in model_checkpoint:
@@ -99,6 +107,7 @@ def initialize_model(model_checkpoint, api):
 
     return model, tokenizer 
 
+
 def read_data(
     data_path,  
     classified_path,
@@ -113,7 +122,8 @@ def read_data(
     tokenizer,
     summarized_contexts,
     do_train,
-    cfg_name
+    cfg_name,
+    num_summary_sentences
     ):
 
     if "iwslt_hf" in data_path:
@@ -136,6 +146,7 @@ def read_data(
             sources = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc["en"]])
             labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
             output_dir = f"/mnt/data-poseidon/sumire/thesis/running/ted/eval_mt/test/en-{tgt_lang}/{cfg_name}/"
+                
         
         print ("The num of sent in train set before preprocess", len([sent for doc in dataset["train"]["doc"] for sent in doc["en"]]))
         print ("The num of sent in test set before preprocess", len([sent for doc in dataset["test"]["doc"] for sent in doc["en"]]))
@@ -146,8 +157,15 @@ def read_data(
                 val_inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["val"])
                 inputs = train_inputs + val_inputs
             else:
-                inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
-        
+                if summarized_contexts != None: #TODO:
+                    inputs= preprocess_function_summ_iwslt(dataset["test"], tgt_lang, src_context_size, tgt_context_size, num_summary_sentences, prompt_type, api, max_length, summarized_contexts)
+                    output_dir = f"/mnt/data-poseidon/sumire/thesis/running/cont_summ_ted/eval_mt/en-{tgt_lang}/{cfg_name}/"
+                    labels = np.asarray(labels)
+                    sources = np.asarray(sources)
+                else:
+                    inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, dataset["test"])
+                
+                    
         else:
             if do_train:
                 train_inputs = preprocess_function(classified_path,src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, train_few_shots, prompt_type, max_length, tokenizer, dataset["train"]).input_ids
@@ -182,6 +200,7 @@ def read_data(
 
     return few_shots, sources, inputs, labels, output_dir
 
+
 def evaluate_mt(
     api,
     model_checkpoint, 
@@ -208,10 +227,10 @@ def evaluate_mt(
         if do_train: # Predict and eval for each instance
             for inp, label, src in zip(inputs, labels, sources): 
                 # psudocode
-                """
+                '''
                 variable = inp + label
                 score = model.score(variable)
-                """
+                '''
                 pred = model.generate(inp, max_new_tokens=max_new_tokens).generated_text
 
                 with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
@@ -444,13 +463,16 @@ def main():
     metrics = cfg.generic.metrics.split(",")
     print ("##################metirics", metrics)
     classified_path = cfg.generic.classified_path
+    num_summary_sentences = cfg.generic.num_summary_sentences
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
     
     
     # Initialize Model
     model, tokenizer = initialize_model(model_checkpoint, api)
-
+    
     # Load Dataset
+    #tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
     few_shots, sources, inputs, labels, output_dir  = read_data(
         data_path, 
         classified_path,
@@ -465,9 +487,10 @@ def main():
         tokenizer,
         summarized_contexts,
         do_train,
-        cfg_name
-        )
-
+        cfg_name,
+        num_summary_sentences
+        ) 
+    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -510,6 +533,6 @@ def main():
         metrics
         )
     print ("Evaluation Successful")
-
+    
 if __name__ == "__main__":
     main()
