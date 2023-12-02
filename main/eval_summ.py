@@ -4,7 +4,8 @@ from extractive import ExtractiveSummarizer
 import torch
 import os 
 from transformers import AutoConfig, AutoModel, AutoTokenizer
-from preprocess_summ import preprocess_function_contrapro
+from datasets import load_dataset, concatenate_datasets, load_from_disk
+from preprocess_summ import preprocess_function_contrapro, preprocess_function_iwslt
 from metrics_summ import compute_metrics
 
 import numpy as np
@@ -20,9 +21,10 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--cfg", action=ActionConfigFile)
     #parser.add_class_arguments(EarlyStoppingCallback, "early_stopping")
     #parser.add_argument("--cfg", action=ActionConfigFile)
-    #parser.add_argument("--generic.src_lang", required=True)
+    parser.add_argument("--generic.tgt_lang", required=True, type=str)
     parser.add_argument("--generic.data_path", required=True, metavar="FILE", help="path to model file for bsd is '/home/sumire/discourse_context_mt/data/BSD-master/'")
-    parser.add_argument("--generic.src_context", default="src", help="the number of the target context sentence for each input")
+    parser.add_argument("--generic.src_context", default="src", help="the number of the source context sentence for each input")
+    parser.add_argument("--generic.tgt_context", default="src", help="the number of the target context sentence for each input")
     #parser.add_argument("--generic.dropout", type=float, choices=np.arange(0.0, 1.0, 0.1), default=0, help="the coword dropout rate")
     #parser.add_argument("--generic.speaker", type=bool, default=False)
     #parser.add_argument("--generic.random_context", type=bool, default=False)
@@ -35,6 +37,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.api", type=bool, default=False, metavar="FILE", help="Whether using text generation api or not")
     parser.add_argument("--generic.device",type=int, default=6,  help="The GPU device id")
     parser.add_argument("--generic.num_summary_sentences",  type=int, default=1, help="The num_summary_sentences")
+    parser.add_argument("--generic.prompt_type",  type=int, default=0, help="The type of prompt, if none 0")
     return parser
 
 
@@ -61,11 +64,9 @@ def initialize_model(model_checkpoint, api, device):
             if model_name is None:
                 raise Exception('model upstage/Llama-2-70b-instruct-v2 is not available.')
     """
-    if "transformersum" in model_checkpoint:
-        #tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)   # ,  truncation=True, return_tensors="pt") # padding_side = 'left',
-        
+    if "transformersum" in model_checkpoint:        
         model = ExtractiveSummarizer.load_from_checkpoint(model_checkpoint).to(device)
-        print (model.hparams)
+        #print (model.hparams)
     return model
 
 def read_data(
@@ -73,7 +74,11 @@ def read_data(
     api,
     model_checkpoint, 
     src_context_size,
-    cfg_name
+    tgt_context_size,
+    cfg_name,
+    tgt_lang,
+    prompt_type,
+    num_summary_sentences
     ):
 
     if "ContraPro" in data_path:
@@ -81,13 +86,32 @@ def read_data(
         output_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/contrapro/{cfg_name}/"
         labels = np.asarray(labels)
         sources = np.asarray(sources)
-
+        
+    if "iwslt_hf" in data_path:
+        data_files = { "train": f"{data_path}train_ted_en-{tgt_lang}",  "val": f"{data_path}val_ted_en-{tgt_lang}",  "test": f"{data_path}test_ted_en-{tgt_lang}"}
+        dataset = load_dataset("json", data_files=data_files)
+        #sources = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc["en"]])
+        #labels = np.asarray([sent for doc in dataset["test"]["doc"] for sent in doc[tgt_lang]])
+        sources=None
+        labels=None
+        if src_context_size > 0:
+            output_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/ted/en-{tgt_lang}/{src_context_size+1}-1to{num_summary_sentences+1}-1/{cfg_name}/"
+        if tgt_context_size > 0:
+            output_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/ted/en-{tgt_lang}/1-{tgt_context_size+1}to1-{num_summary_sentences+1}/{cfg_name}/"
+        
+        if api is True:
+            inputs = preprocess_function_iwslt(src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, prompt_type, dataset["test"])
+        
+        else:
+            inputs = preprocess_function_iwslt(src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, prompt_type, dataset["test"]).input_ids
+    
     else:
         print ("preprocess not defined")
 
     return sources, inputs, labels, output_dir
 
 def evaluate_summarization(
+    data_path,
     api,
     model_checkpoint, 
     model, 
@@ -100,50 +124,85 @@ def evaluate_summarization(
     output_dir,
     ):
 
-    all_preds = []
-    all_labels = []
-    all_srcs = []
-    print ("Hi")
-
-    # Generate
     
-    for inp, label, src in zip(inputs, labels, sources): 
-        pred = model.predict(inp, raw_scores=False, num_summary_sentences=num_summary_sentences)
+    
+    if "ContraPro" in data_path:
+        all_preds = []
+        all_labels = []
+        all_srcs = []
+
+        # Generate
         
-        all_preds.append(pred)
-        all_labels.append(label)
-        all_srcs.append(src)
+        for inp, label, src in zip(inputs, labels, sources): 
+            pred = model.predict(inp, raw_scores=False, num_summary_sentences=num_summary_sentences)
+            
+            all_preds.append(pred)
+            all_labels.append(label)
+            all_srcs.append(src)
+            
+            if "llama" in model_checkpoint or "Llama" in model_checkpoint:
+                with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
+                    wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
+
+                with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
+                    wf.write(inp.strip()+'\n')
+
+
+            with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
+                wf.write(label.strip()+'\n')
+
+            with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
+                wf.write(src.strip()+'\n')
+
         
-        if "llama" in model_checkpoint or "Llama" in model_checkpoint:
-            with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
-                wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
-                print ("Hi3")
+        # Evaluate    
+        eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
+        result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, eval_preds)
 
-            with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
-                wf.write(inp.strip()+'\n')
+        
+        with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
+            rouge_score = result
 
+            for metric, score in zip(["rouge"], [rouge_score]):
+                wf.write(f"{metric}: {score}\n") 
 
-        with open(output_dir+'/references.txt','a', encoding='utf8') as wf:
-            wf.write(label.strip()+'\n')
+        with open(output_dir+'/summarized_contexts.txt','a', encoding='utf8') as wf:
+            for pred in decoded_preds:
+                wf.write(pred.strip()+'\n')
+                
+    else:
+        all_preds = []
+        all_contexts = []
+
+        # Generate
+        
+        for inp in inputs: 
+            if inp != "":
+                pred = model.predict(inp, raw_scores=False, num_summary_sentences=num_summary_sentences)
+                all_contexts.append(inp)
+            else:
+                pred = " "
+                all_contexts.append(" ")
+            all_preds.append(pred)
+            
+            
+            if "llama" in model_checkpoint or "Llama" in model_checkpoint:
+                with open(output_dir+'/without_postprocess.txt','a', encoding='utf8') as wf:
+                    wf.write(pred.strip()+'\n##########\n') # if with batch maybe need to adapt
+        
+
+                with open(output_dir+'/prompt+source.txt','a', encoding='utf8') as wf:
+                    wf.write(inp.strip()+'\n')
 
         with open(output_dir+'/source.txt','a', encoding='utf8') as wf:
-            wf.write(src.strip()+'\n')
-
-    
-    # Evaluate    
-    eval_preds = (np.asarray(all_preds), np.asarray(all_labels), np.asarray(all_srcs))
-    result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(api, model_checkpoint, output_dir, eval_preds)
-    print (decoded_preds)
-    
-    with open(output_dir+'/test_score.txt','w', encoding='utf8') as wf:
-        rouge_score = result
-
-        for metric, score in zip(["rouge"], [rouge_score]):
-            wf.write(f"{metric}: {score}\n") 
-
-    with open(output_dir+'/summarized_contexts.txt','a', encoding='utf8') as wf:
-        for pred in decoded_preds:
-            wf.write(pred.strip()+'\n')
+            for cont in all_contexts :
+                wf.write(cont.strip()+'\n')
+                
+        decoded_preds = np.asarray(all_preds)
+        with open(output_dir+'/summarized_contexts.txt','a', encoding='utf8') as wf:
+            for pred in decoded_preds:
+                wf.write(pred.strip()+'\n')
+        
     
 
 def main():
@@ -152,12 +211,15 @@ def main():
 
     data_path = cfg.generic.data_path
     src_context_size = cfg.generic.src_context
+    tgt_context_size = cfg.generic.tgt_context
     model_checkpoint = cfg.generic.model_checkpoint
     batch_size = cfg.generic.batch_size
     cfg_name = cfg.generic.cfg_name
     api = cfg.generic.api
-    device = torch.device(f'cuda:{cfg.generic.device}' if torch.cuda.is_available() else 'cpu')
     num_summary_sentences = cfg.generic.num_summary_sentences
+    prompt_type = cfg.generic.prompt_type
+    device = torch.device(f'cuda:{cfg.generic.device}' if torch.cuda.is_available() else 'cpu')
+    tgt_lang=cfg.generic.tgt_lang
     
     # Initialize Model
     model = initialize_model(model_checkpoint, api, device)
@@ -167,7 +229,11 @@ def main():
         api,
         model_checkpoint, 
         src_context_size,
-        cfg_name
+        tgt_context_size,
+        cfg_name,
+        tgt_lang,
+        prompt_type,
+        num_summary_sentences
         )
 
     if not os.path.exists(output_dir):
@@ -178,16 +244,20 @@ def main():
         for i in [
             f"data_path: {data_path}", 
             f"src_context_size: {src_context_size}",  
+            f"tgt_context_size: {tgt_context_size}",
+            f"tgt_lang: {tgt_lang}",
             f"api: {api}",
             f"model_checkpoint: {model_checkpoint}", 
             f"batch_size: {batch_size}", 
             f"cfg_name: {cfg_name}",
+            f"prompt_type: {prompt_type}",
             f"device: {device}"
             ]:
             wf.write(f"{i}\n")
 
     # Generate and Evaluate
     evaluate_summarization(
+        data_path,
         api,
         model_checkpoint, 
         model, 
@@ -231,5 +301,25 @@ summary = model.predict_sentences(input_sentences, raw_scores=False, num_summary
 print(model.device)  # Should now correctly reflect "cuda:4"
 print(summary)
 
+
+"""
+
+"""
+# How to pass model_name_or_path to ExtractiveSummarizer    
+from argparse import ArgumentParser
+
+# Assuming you have a parent parser
+parent_parser = ArgumentParser(add_help=False)
+
+# Instantiate your ExtractiveSummarizer and call the add_model_specific_args method
+model = ExtractiveSummarizer(hparams={})
+# model = ExtractiveSummarizer(hparams.model_name_or_path="allenai/longformer-large-4096") # "allenai/longformer-base-4096"
+parser = model.add_model_specific_args(parent_parser)
+
+# Parse the arguments
+args = parser.parse_args()
+
+# Now you can access the arguments like this
+model_name_or_path = args.model_name_or_path
 
 """

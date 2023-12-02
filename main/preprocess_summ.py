@@ -1,105 +1,7 @@
 import random
 import json
+from preprocess import select_context
 
-
-def select_context(context_size, doc_input, current_idx, sep_token, prompt_type):
-    #context_list = []
-    _context = ""
-    
-    # Check each context index given the context size and current input index
-    for context_window in range(context_size, 0, -1):
-        context_idx = current_idx - context_window
-        # If context idx is not the left side of the beggining of the doc_inputs
-        
-        if context_idx >= 0:     
-            #context_list.append(doc_input[context_idx]) ## call summarized context 
-            _context += doc_input[context_idx]
-            if prompt_type == 1:
-                _context += sep_token
-    
-    return _context 
-
-
-def preprocess_function(src_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
-
-    break_token = "<#b#>"
- 
-    if "xglm" in model_checkpoint:
-        after_ip = " = "
-        sep_token = "</s>"
-
-    elif "llama" or "Llama" in model_checkpoint:
-        after_ip = " => "
-        sep_token = "\n"
-
-    inputs = []
-
-    # Context for source sentence
-    if prompt_type == 1:
-        context_inst = f"Given context:{sep_token}" 
-    elif prompt_type == 2:
-        context_inst = ""
-
-    if src_context_size >= 1:
-        for doc_idx, doc in enumerate(data["doc"]):
-            doc_input = [sent for sent in doc["en"]] 
-            
-            for idx, ip in enumerate(doc_input):
-                _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
-
-                if prompt_type==1:
-                    #concat_input = _context + prompt + ip + after_ip 
-                    #inputs.append(concat_input)
-                    if api is True:
-        
-                        concat_input = "### User:\n" + context_inst + _context + few_shots + ip + "\n\n### Assistant:\n"
-                    else:
-                        concat_input = context_inst + _context + few_shots + ip + after_ip # need to check when context size == 0, there are no two times sep_token 
-
-                    
-                elif prompt_type ==2:
-                    concat_input = few_shots + _context + break_token + ip + after_ip ### Put the special break token before input
-
-                elif prompt_type == 3:
-                    if _context != "":
-                        _context += break_token  # break token only when context exists
-                    
-                    if api is True:
-                        concat_input = "### User:\n" + few_shots + _context + ip + "\n\n### Assistant:\n"
-
-                    else:
-                        concat_input = few_shots + _context + ip + after_ip # break token before ip or not ?
-
-                inputs.append(concat_input)
-
-    else:
-        if "mbart" in model_checkpoint:
-            inputs = [sent for doc in data["doc"] for sent in doc["en"]]
-            tokenizer.src_lang = "en_XX"
-
-        else:
-            #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
-
-            if api:
-                inputs = ["### User:\n" + few_shots + sent + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
-            else:
-                inputs = [few_shots + sent + after_ip for doc in data["doc"] for sent in doc["en"]] # When6 without context prompt 
-            
-        
-    
-    if api is True:
-        model_inputs = inputs
-
-    else:
-        model_inputs = tokenizer(
-            inputs, return_tensors="pt", max_length=max_length, padding='max_length', truncation=True) #, max_length=500, truncation=True, padding='max_length', return_tensors="pt"
-    
-    print ("INPUT EXAMPLE 0")
-    print (inputs[0])
-    print ("INPUT EXAMPLE 1")
-    print (inputs[1])
-    
-    return model_inputs
 
 def sample_example(criteria, original_data, original_indices, n_samples):
     if criteria == "ante==1":
@@ -271,6 +173,84 @@ def preprocess_function_contrapro(data_path, model_checkpoint, src_context_size,
     sources = context_intersec
 
     return inputs, labels, sources
+
+def preprocess_function_iwslt(src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, prompt_type, data): # data should be splitted into train / dev / test internally
+ 
+    if "xglm" in model_checkpoint:
+        after_ip = " = "
+        sep_token = "</s>"
+
+    elif "llama" in model_checkpoint or "Llama" in model_checkpoint:
+        after_ip = " => "
+        sep_token = "\n"
+    
+    else:
+        print ("sep_token and after_ip")
+        sep_token = " "
+        after_ip = ""
+
+    inputs = []
+
+    # Context for source sentence
+    
+    if prompt_type == 1 and "llama" or "Llama" in model_checkpoint:
+        summ_inst = f"Given context:{sep_token}" 
+    else:
+        summ_inst = ""
+        
+    if src_context_size >= 1 or tgt_context_size >= 1:
+        for doc_idx, doc in enumerate(data["doc"]):
+            doc_input = [sent for sent in doc["en"]]
+             
+            if tgt_context_size >= 1:
+                doc_tgt_input = [sent for sent in doc[tgt_lang]]
+            
+            for idx, ip in enumerate(doc_input):
+                if src_context_size >= 1:
+                    _context = select_context(src_context_size, doc_input, idx, sep_token, prompt_type)
+                elif tgt_context_size >= 1:
+                    _context = select_context(tgt_context_size, doc_tgt_input, idx, sep_token, prompt_type)
+                    # TODO: Optionally put style info instead of preceding sentences
+                                
+                if prompt_type==1:
+                    #concat_input = _context + prompt + ip + after_ip 
+                    #inputs.append(concat_input)
+                    if api is True:
+        
+                        concat_input = "### User:\n" + summ_inst + _context + ip + "\n\n### Assistant:\n"
+                    else:
+                        concat_input = summ_inst + _context + after_ip # need to check when context size == 0, there are no two times sep_token 
+
+                    
+                elif prompt_type ==2:
+                    concat_input = few_shots + _context + break_token + after_ip ### Put the special break token before input
+
+                elif prompt_type == 3:
+                    if _context != "":
+                        _context += break_token  # break token only when context exists
+                    
+                    if api is True:
+                        concat_input = "### User:\n" + few_shots + _context +  "\n\n### Assistant:\n"
+
+                    else:
+                        concat_input = few_shots + _context + after_ip # break token before ip or not ?
+                        
+                else:
+                    concat_input = summ_inst + _context + after_ip
+            
+                inputs.append(concat_input)
+        
+    
+    if api is True:
+        model_inputs = inputs
+
+    
+    print ("INPUT EXAMPLE 0")
+    print (inputs[0])
+    print ("INPUT EXAMPLE 1")
+    print (inputs[1])
+    
+    return model_inputs
 
 
 def generate_prompt_bsd(data, tgt_lang, k):
