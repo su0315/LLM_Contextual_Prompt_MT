@@ -65,9 +65,8 @@ def select_context(context_size, doc_input, current_idx, sep_token, prompt_type)
         if context_idx >= 0:     
             #context_list.append(doc_input[context_idx]) ## call summarized context 
             _context += doc_input[context_idx]
-            print ("prompt_type", prompt_type)
+
             if prompt_type == 1 or prompt_type == 0:
-                print ("add_sep_token")
                 _context += sep_token
 
     
@@ -419,9 +418,9 @@ def preprocess_function_summ_iwslt(data, tgt_lang, src_context_size, tgt_context
     
     data_name = 'ted'
     if src_context_size > 0:
-        context_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/{data_name}/en-{tgt_lang}/{src_context_size+1}-1to{num_summary_sentences+1}-1/transforemersum-{summarized_contexs}-{data_name}-{src_context_size+1}-1to{num_summary_sentences+1}-1"
+        context_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/{data_name}/en-{tgt_lang}/{src_context_size+1}-1to{num_summary_sentences+1}-1/transforemersum-{summarized_contexs}-{data_name}-{tgt_lang}-{src_context_size+1}-1to{num_summary_sentences+1}-1"
     elif tgt_context_size > 0:
-        context_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/{data_name}/en-{tgt_lang}/1-{tgt_context_size+1}to1-{num_summary_sentences+1}/transforemersum-{summarized_contexs}-{data_name}-1-{tgt_context_size+1}to1-{num_summary_sentences+1}"
+        context_dir = f"/mnt/data-poseidon/sumire/thesis/running/summarization/{data_name}/en-{tgt_lang}/1-{tgt_context_size+1}to1-{num_summary_sentences+1}/transforemersum-{summarized_contexs}-{data_name}-{tgt_lang}-1-{tgt_context_size+1}to1-{num_summary_sentences+1}"
 
     context_intersec=[]
     with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:

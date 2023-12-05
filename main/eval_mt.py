@@ -45,7 +45,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.prompt_type", type=int, default=1, help="the type of the prompt")
     parser.add_argument("--generic.max_new_tokens", type=int, default=0, help="max_new_tokens")
     parser.add_argument("--generic.max_length", type=int, default=0, help="max_length for input and labels")
-    parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
+    parser.add_argument("--generic.cfg_name", required=False, metavar="FILE", help="config file name")
     parser.add_argument("--generic.api", type=bool, default=False, metavar="FILE", help="Whether using text generation api or not")
     parser.add_argument('--generic.metrics',  type=str, help = "Comma-separated list of strings", default= "sacrebleu,comet,cxmi", required=False)
     parser.add_argument('--generic.classified_path',  type=str, help = "The path to the classified label for context if any", default= None, required=False)
@@ -65,17 +65,18 @@ def initialize_model(model_checkpoint, api):
         model.config.pad_token_id = tokenizer.pad_token_id
     
     elif api is True:
-        from text_generation.client import Client
-
+        #from text_generation.client import Client
+        from text_generation import Client
+        
         TGI_CENTRAL_ADDRESS="localhost:8765"
-        #models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
+        models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
         #models = Client(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
-        models = Client(f"http://{TGI_CENTRAL_ADDRESS}")
+        #model = Client(f"http://{TGI_CENTRAL_ADDRESS}")
         print (models)
-        print (models["name"], models["address"])
-        model.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
+        
+        #models.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
         tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
-        """ 
+        
         # TODO: adapt for new api 
         if "Llama-2-70b-instruct-v2" in model_checkpoint:
             model_name = None
@@ -88,7 +89,7 @@ def initialize_model(model_checkpoint, api):
                     tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
         if model_name is None:
             raise Exception('model upstage/Llama-2-70b-instruct-v2 is not available.')
-        """
+        
             
 
 
@@ -457,7 +458,8 @@ def main():
     prompt_type =  cfg.generic.prompt_type
     max_new_tokens = cfg.generic.max_new_tokens
     max_length = cfg.generic.max_length
-    cfg_name = cfg.generic.cfg_name
+    if cfg.generic.max_length != None:
+        cfg_name = cfg.generic.cfg_name
     api = cfg.generic.api
     do_train = cfg.generic.do_train
     metrics = cfg.generic.metrics.split(",")
@@ -466,6 +468,16 @@ def main():
     num_summary_sentences = cfg.generic.num_summary_sentences
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
+    if summarized_contexts != None:
+        if "iwslt" in data_path:
+            data_name = "ted"
+        if src_context_size > 0:
+            context_size = f"{src_context_size+1}-1to{num_summary_sentences+1}-1"
+        elif tgt_context_size > 0:
+            context_size = f"1-{tgt_context_size+1}to1-{num_summary_sentences+1}"
+        cfg_name = f"Llama-2-70b-instruct-v2-sum-{summarized_contexts}-{data_name}-{tgt_lang}-{context_size}"
+
+        print (cfg_name)
     
     
     # Initialize Model

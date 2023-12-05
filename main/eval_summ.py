@@ -19,7 +19,6 @@ from tqdm import tqdm
 def read_arguments() -> ArgumentParser:
     parser = ArgumentParser(description="Command for evaluating models.")
     parser.add_argument("--cfg", action=ActionConfigFile)
-    #parser.add_class_arguments(EarlyStoppingCallback, "early_stopping")
     #parser.add_argument("--cfg", action=ActionConfigFile)
     parser.add_argument("--generic.tgt_lang", required=True, type=str)
     parser.add_argument("--generic.data_path", required=True, metavar="FILE", help="path to model file for bsd is '/home/sumire/discourse_context_mt/data/BSD-master/'")
@@ -33,7 +32,7 @@ def read_arguments() -> ArgumentParser:
     parser.add_argument("--generic.batch_size", type=int, default=0, help="the batch size of evaluation")
     parser.add_argument("--generic.model_checkpoint", required=True, metavar="FILE", help="model_checkpoint")
     #parser.add_argument("--generic.k", type=int, default=0, help="the number of few shot")
-    parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
+    #parser.add_argument("--generic.cfg_name", required=True, metavar="FILE", help="config file name")
     parser.add_argument("--generic.api", type=bool, default=False, metavar="FILE", help="Whether using text generation api or not")
     parser.add_argument("--generic.device",type=int, default=6,  help="The GPU device id")
     parser.add_argument("--generic.num_summary_sentences",  type=int, default=1, help="The num_summary_sentences")
@@ -64,7 +63,8 @@ def initialize_model(model_checkpoint, api, device):
             if model_name is None:
                 raise Exception('model upstage/Llama-2-70b-instruct-v2 is not available.')
     """
-    if "transformersum" in model_checkpoint:        
+    if "transformersum" in model_checkpoint:
+     
         model = ExtractiveSummarizer.load_from_checkpoint(model_checkpoint).to(device)
         #print (model.hparams)
     return model
@@ -214,14 +214,26 @@ def main():
     tgt_context_size = cfg.generic.tgt_context
     model_checkpoint = cfg.generic.model_checkpoint
     batch_size = cfg.generic.batch_size
-    cfg_name = cfg.generic.cfg_name
+    #cfg_name = cfg.generic.cfg_name
     api = cfg.generic.api
     num_summary_sentences = cfg.generic.num_summary_sentences
     prompt_type = cfg.generic.prompt_type
     device = torch.device(f'cuda:{cfg.generic.device}' if torch.cuda.is_available() else 'cpu')
     tgt_lang=cfg.generic.tgt_lang
     
+    if "distilroberta" in model_checkpoint:
+        summarized_contexts = "distilroberta"
+    if "iwslt" in data_path:
+        data_name = "ted"
+    if src_context_size > 0:
+        context_size = f"{src_context_size+1}-1to{num_summary_sentences+1}-1"
+    elif tgt_context_size > 0:
+        context_size = f"1-{tgt_context_size+1}to1-{num_summary_sentences+1}"
+    cfg_name = f"transforemersum-{summarized_contexts}-{data_name}-{tgt_lang}-{context_size}"
+    print (cfg_name)
+  
     # Initialize Model
+    
     model = initialize_model(model_checkpoint, api, device)
     # Load Dataset
     sources, inputs, labels, output_dir  = read_data(
@@ -270,7 +282,7 @@ def main():
         output_dir,
         )
 
-
+    
     print ("Evaluation Successful")
 
 if __name__ == "__main__":
@@ -302,9 +314,6 @@ print(model.device)  # Should now correctly reflect "cuda:4"
 print(summary)
 
 
-"""
-
-"""
 # How to pass model_name_or_path to ExtractiveSummarizer    
 from argparse import ArgumentParser
 

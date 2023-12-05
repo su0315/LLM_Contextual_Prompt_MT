@@ -2,8 +2,8 @@ generic:
   summarized_contexts : distilroberta
   data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
   #src_lang: en
-  tgt_lang: ja
-  src_context: 4
+  tgt_lang: ko
+  src_context: 8
   #tgt_context: 0
   #dropout: 0.0
   #speaker: False
@@ -17,5 +17,6 @@ generic:
   max_new_tokens : 1024 #64 #128 
   max_length : 1024 #1024 #512 # 512 # 272 should be okay for k = 3# 313 should be ok for k=4
   api: True
-  num_summary_sentences: 2
-  cfg_name : Llama-2-70b-instruct-v2-ctpro-zs-p1-sum-de-5-1to3-1
+  num_summary_sentences: 4
+  metrics: sacrebleu,comet
+  #cfg_name : Llama-2-70b-instruct-v2-ctpro-zs-p1-sum-de-5-1to3-1
