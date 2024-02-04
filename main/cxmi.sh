@@ -2,6 +2,7 @@
 
 export PYTHONPATH=.:$PYTHONPATH
 
+# Change parameters for your interest
 data_dir=/mnt/data-poseidon/sumire/thesis/running
 base_data_dir=/mnt/data-poseidon/sumire/thesis
 model_type=Llama-2-70b-instruct-v2-usas-zs-p1-nsplit
