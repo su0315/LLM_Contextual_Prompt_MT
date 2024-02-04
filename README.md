@@ -8,20 +8,20 @@ The project is divided into three parts, and the following guide you how to repl
 3. Evaluating Discourse Phenomena on MT with LLMs
 
 ## Get started
-1. Clone the repository
+1. Clone the repository.
 ```bash
 git clone https://github.com/su0315/LLM_Contextual_Prompt_MT.git
 ```
-2. Clone [LTI's Texxt Generation Inference](https://github.com/CoderPat/text-generation-inference) for running the LLM.
+2. Clone [LTI's Texxt Generation Inference](https://github.com/CoderPat/text-generation-inference) for running the LLM. Follow the setup instruction in the [README](https://github.com/CoderPat/text-generation-inference/blob/main/README.md).
 ```bash
 git clone https://github.com/CoderPat/text-generation-inference.git
 ```
-3. Change directory to the repository, and replicate the environment using ```llm_mt.yml```
+3. Change directory to the repository, and replicate the environment using ```llm_mt.yml```.
 ```bash 
 cd LLM_Contextual_Prompt_MT \
 conda env create -f llm_mt.yml
 ```
-4. Activate the environment
+4. Activate the environment.
 ```bash
 conda activate llm_mt
 ```
@@ -85,7 +85,7 @@ sh summarized_cxmi.sh
 #### Discourse Phenomena Resolutions for lexical cohesion, formality, pronouns, and verb forms.
 1. We use [MuDA](https://github.com/CoderPat/MuDA) for summarising context. Follow the [README](https://github.com/CoderPat/MuDA/blob/main/README.md) for the setup.
 2. To run MuDA tagger on our dataset, in ```muda_eval.sh```, replace ```muda_lang```, ```lang```.
-For example if you want to run MuDA for Japanese, it looks like this, since the language code is slightly different each other. (However except for Japanese, you can write the same for both.)
+For example if you want to run MuDA for Japanese, it looks like this, since the language code is slightly different each other (However, except for Japanese, you can write the same for both).
 ```bash
 muda_lang=jp \
 lang=ja \
