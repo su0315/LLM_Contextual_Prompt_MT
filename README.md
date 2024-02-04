@@ -12,7 +12,7 @@ The project is divided into three parts, and the following guide you how to repl
 ```bash
 git clone https://github.com/su0315/LLM_Contextual_Prompt_MT.git
 ```
-2. Clone [LTI's Texxt Generation Inference](https://github.com/CoderPat/text-generation-inference) for running the LLM. Follow the setup instruction in the [README](https://github.com/CoderPat/text-generation-inference/blob/main/README.md).
+2. Clone [LTI's Text Generation Inference](https://github.com/CoderPat/text-generation-inference) for running the LLM. Follow the setup instruction in the [README](https://github.com/CoderPat/text-generation-inference/blob/main/README.md).
 ```bash
 git clone https://github.com/CoderPat/text-generation-inference.git
 ```
@@ -40,7 +40,7 @@ cd main
 
 ## 1. Context-aware MT with LLMs
 #### Evaluate Context-agnostic / Context-aware Models
-1. In ```eval_mt.sh```, replace ```tgt_langs```, ```context_sizes```, ```context_side``` for your research interest.
+1. In ```eval_mt.sh```, replace ```tgt_langs```, ```context_sizes```, and ```context_side``` for your research interest.
 For example, if you want to evaluate Arabic, source-side context size 3:
 ```bash 
 tgt_langs="ar" \
@@ -84,7 +84,7 @@ sh summarized_cxmi.sh
 ## 3. Evaluating Discourse Phenomena on MT with LLMs
 #### Discourse Phenomena Resolutions for lexical cohesion, formality, pronouns, and verb forms.
 1. We use [MuDA](https://github.com/CoderPat/MuDA) for summarising context. Follow the [README](https://github.com/CoderPat/MuDA/blob/main/README.md) for the setup.
-2. To run MuDA tagger on our dataset, in ```muda_eval.sh```, replace ```muda_lang```, ```lang```.
+2. To run MuDA tagger on our dataset, in ```muda_eval.sh```, replace ```muda_lang``` and ```lang```.
 For example if you want to run MuDA for Japanese, it looks like this, since the language code is slightly different each other (However, except for Japanese, you can write the same for both).
 ```bash
 muda_lang=jp \
