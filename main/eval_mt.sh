@@ -25,7 +25,3 @@ for tgt_lang in $tgt_langs; do
         
     done
 done
-
-
-/home/sumire/thesis/LLM_Contextual_Prompt_MT/main/config/zs-p1-Llama-2-70b-instruct-v2/ko/11-1.yaml
-/home/sumire/thesis/LLM_Contextual_Prompt_MT/main/config/zs-p1-Llama-2-70b-instruct-v2/ko/11-1.yaml

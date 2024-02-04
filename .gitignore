@@ -201,3 +201,9 @@ main/tokenizer.py
 notebook/api.ipynb
 data/iwslt_hf/
 data/muda_tagged/
+muda_working_env.yml
+transformersum.yml
+results/
+notebook/
+notebook/result_visualization/context_size_comparison.ipynb
+notebook/result_visualization/1-1_model_comparison.ipynb

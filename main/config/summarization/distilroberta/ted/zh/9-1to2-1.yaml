@@ -1,7 +1,7 @@
 generic:
   data_path: /home/sumire/thesis/LLM_Contextual_Prompt_MT/data/iwslt_hf/
   #src_lang: en
-  tgt_lang: ar
+  tgt_lang: zh
   src_context: 8
   tgt_context: 0
   #dropout: 0.0

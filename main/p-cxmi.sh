@@ -4,8 +4,8 @@ export PYTHONPATH=.:$PYTHONPATH
 
 #data_dir=/mnt/data-poseidon/sumire/thesis/running
 model_type=Llama-2-70b-instruct-v2-usas-zs-p1-nsplit
-langs="ar ko ja zh"
-contexts="1-6 1-7"
+langs="ko"
+contexts="4-1"
 
 for lang in $langs; do
     for context in $contexts; do

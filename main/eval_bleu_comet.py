@@ -1,4 +1,6 @@
-from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM, GenerationConfig, XGLMTokenizerFast, XGLMConfig, LlamaTokenizer, LlamaForCausalLM
+from transformers.models.llama.tokenization_llama import LlamaTokenizer # Adapted for new version transformers 
+from transformers.models.llama.modeling_llama import LlamaForCausalLM
+from transformers import XGLMTokenizer, XGLMForCausalLM, Seq2SeqTrainingArguments, Seq2SeqTrainer, AutoTokenizer, AutoModelForSeq2SeqLM,  XGLMTokenizerFast, XGLMConfig
 from datasets import load_dataset, concatenate_datasets, load_from_disk
 import evaluate
 import numpy as np
@@ -31,7 +33,6 @@ def read_output_dir():
 def read_config(output_dir):
     # Initialize an empty dictionary to store the configuration
     config = {}
-    print ("#############")
     try:
         with open(f"{output_dir}/config", 'r') as file:
             for line in file:
@@ -45,26 +46,20 @@ def read_config(output_dir):
     except FileNotFoundError:
         print(f"File '{output_dir}' not found.")
 
-    # Now you have the configuration as a dictionary
-    # You can access individual elements like this: ################# Correct CO
     tgt_lang = config.get('tgt_lang', None)
     data_path = config.get('data_path', None)
-    #src_context_size = int(config.get('src_context_size', None))
     api = config.get('api', None)
     model_checkpoint = config.get('model_checkpoint', None)
-    #batch_size = int(config.get('batch_size', None))
-    #max_new_tokens = int(config.get('max_new_tokens', None))
     prompt_type = int(config.get('prompt_type', 1))
-    #max_length = int(config.get('max_length', None))
-    metrics = ["comet"]#, "sacrebleu"
+    metrics = [ "sacrebleu", "comet"]#, "sacrebleu"
     cfg_name = config.get('cfg_name', None)
-    #k = int(config.get('k', None))
 
     return tgt_lang, data_path, api, model_checkpoint, prompt_type, metrics, cfg_name
 
 
 def initialize_tokenizer(model_checkpoint, api):
-
+    print (model_checkpoint)
+    print (type(LlamaTokenizer))
     if "llama" in model_checkpoint:
         tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
         tokenizer.add_special_tokens({"pad_token":"<pad>"})
@@ -229,7 +224,6 @@ def evaluate_instances(
     lang_to_code = {"ja": "ja_XX", "ar":"ar_AR", "de":"de_DE", "fr":"fr_XX","ko":"ko_KR", "zh": "zh_CN"}
 
     if api: 
-
         # Evaluate
         eval_preds = (np.asarray(preds), np.asarray(labels), np.asarray(sources))
         result, decoded_preds, decoded_labels, decoded_input_ids = compute_metrics(metrics, api, model_checkpoint, output_dir, tgt_lang, tokenizer, eval_preds, prompt_type)
@@ -256,23 +250,13 @@ def evaluate_instances(
 
         # Write the averaged score
         with open(score_file_name,'a', encoding='utf8') as wf:
-            for metric in [ "comet"]:  #"sacrebleu",
+            for metric in [  "sacrebleu", "comet"]:  #"sacrebleu",
                 wf.write(f"{metric}: {result[metric]}\n") 
 
         # Write Translation Output after postprocess
         with open(translation_file_name,'w', encoding='utf8') as wf:
             for pred in decoded_preds:
                 wf.write(pred+'\n')
-
-        """
-        with open(output_dir+'/src_with_b.txt','w', encoding='utf8') as wf:
-            for src in decoded_input_ids:
-                wf.write(src.strip()+'\n')
-
-        with open(output_dir+'/ref_with_b.txt','w', encoding='utf8') as wf:
-            for ref in decoded_labels:
-                wf.write(f"{ref}\n")
-        """
 
 def main():
     output_dir, criteria = read_output_dir()
