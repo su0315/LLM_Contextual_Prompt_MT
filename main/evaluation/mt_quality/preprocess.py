@@ -72,10 +72,6 @@ def select_context(context_size, doc_input, current_idx, sep_token, prompt_type)
     
     return _context 
 
-"""
-# TODO 
-def select_style(context_size, doc_input, current_idx, sep_token, prompt_type):
-"""
 
 def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt_lang, api, model_checkpoint, few_shots, prompt_type, max_length, tokenizer, data): # data should be splitted into train / dev / test internally
 
@@ -98,16 +94,6 @@ def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt
     elif prompt_type == 2:
         context_inst = ""
     
-
-    """
-    if classified: # TODO load class for each line and put zip in sentence loop
-        # Load the class for ech input 
-        context_scores = []
-        with open(classified_path, "r", encoding='utf8') as rf:
-            for line in rf:
-                context_scores.append(int(line.strip()))
-    """
-            
 
     if src_context_size >= 1 or tgt_context_size >= 1:
         for doc_idx, doc in enumerate(data["doc"]):
@@ -260,23 +246,19 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
         with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
             context_intersec = [line for line in file]
     elif summarized_contexs =="distilroberta" and type(src_context_size) == "ante-1":
-        print ("ante-1")
         context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-ante-1"
         with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
             context_intersec = [line for line in file]
     elif summarized_contexs =="distilroberta-2":
         context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to3-1"
-        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to3-1")
         with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
             context_intersec = [line for line in file]
     elif summarized_contexs =="distilroberta-3":
         context_dir = f"/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/summarization/contrapro/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to4-1"
-        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to4-1")
         with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
             context_intersec = [line for line in file]
     elif summarized_contexs =="distilroberta-4":
         context_dir = f"/mnt/data-poseidon/sumire/thesis/summ_rouge/{src_context_size+1}-1to5-1/transforemersum-distilroberta-ctpro-{src_context_size+1}-1to5-1"
-        print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Found10-1to5-1")
         with open(f'{context_dir}/summarized_contexts.txt' , 'r') as file:
             context_intersec = [line for line in file]
     elif src_context_size != 0:
@@ -288,55 +270,21 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
 
         with open(f'{data_path}/contrapro.context.en' , 'r') as file:
             context_list = [line.strip() for line in file]
-            
-            #context_intersec = [context_list[i] for i in indices_in_src_list]
-            #print ("context_list", len(context_list)) # 36031
     
         contexts = []
         print ("n_sent", n_sent) # 12011
         print (max_c)
         
         # Choose only one chunk of context out of three chunks repitition 
-        #for i, alpha in zip(range(n_sent_intersec)[:5], ante_intersec[:5]):
         for i in range(n_sent): # 12011
-            #print (i)
             print (i*3*max_c, i*3*max_c+max_c)
             sentence_context = context_list[i*3*max_c:i*3*max_c+max_c]
-            #sentence_context = sep_token.join(context_list[i*3*max_c:i*3*max_c+max_c])
-            #if sentence_context != "":
-                #sentence_context += sep_token
-            #print (alpha)
-            #print (sentence_context)
-            #ante_context = sentence_context[-alpha]
             contexts.append(sentence_context)
 
         print ("contexts length", len(contexts)) # 12011   
         context_chunks_intersection = [contexts[i] for i in indices_in_src_list] # 11084
         print ("context_chunks_intersection", len(context_chunks_intersection))
-
-        # # Sampling sentences (where antecedent < 2)
-        # # 1. pop ante 0 : take ante non-zero indices and apply src and tgt 
-        # print ("ante_intersec", len(ante_intersection)) # 11085
-        # indices_intersec_non_zero_ante = [i for i, ante in enumerate(ante_intersection) if ante != 0]
-        # ante_intersec_non_zero = [ante_intersection[i] for i in indices_intersec_non_zero_ante]
-        # print ("ante_intersec_non_zero", len(ante_intersec_non_zero)) # 8828
-        # src_intersec_non_zero_ante = [src_intersection[i] for i in indices_intersec_non_zero_ante]
-        # print ("src_intersec3", len(src_intersec_non_zero_ante)) # 8828
-        # tgt_intersec_non_zero_ante = [tgt_intersection[i] for i in indices_intersec_non_zero_ante]
-        
-        # Sampling sentences (where antecedent < 2) for context 
-        # 1. pop ante 0 : take ante non-zero indices and apply context
         context_chunks_intersec_non_zero_ante = [context_chunks_intersection[i] for i in indices_intersec_non_zero_ante]
-        
-        # # subsample 1000 examples indices from antecedent distance = 1  
-        # sampled_indices = sample_example(criteria="ante==1", original_data=ante_intersec_non_zero, original_indices= [i for i, item in enumerate(ante_intersec_non_zero)], n_samples=1000) # sample 1 (take 1000 of antecedent distance 1)
-        # sampled_indices = sample_example(criteria="ante==2", original_data=[ante_intersec_non_zero[i] for i in sampled_indices], original_indices= sampled_indices, n_samples=1000) # sample 2 (take 1000 of antecedent distance 2)
-        # # Apply sampled indices for src and tgt
-        # sampled_src_intersec = [src_intersec_non_zero_ante[i] for i in sampled_indices]
-        # sampled_tgt_intersec = [tgt_intersec_non_zero_ante[i] for i in sampled_indices]
-        # print (sampled_context_chunks_intersec[:5])
-        # src_intersec = sampled_src_intersec # sampled
-        # tgt_intersec = sampled_tgt_intersec # sammpled
         
         # Apply sampled indices for context and antecedent
         sampled_context_chunks_intersec = [context_chunks_intersec_non_zero_ante[i] for i in sampled_indices]

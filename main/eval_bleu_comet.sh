@@ -17,7 +17,7 @@ for tgt_lang in $tgt_langs; do
             output_dir=$data_dir/$context_size/en-${tgt_lang}/Llama-2-70b-instruct-v2-usas-zs-p1-nsplit-${tgt_lang}-${context_size}
             echo $output_dir
             echo $criterias
-            python main/eval_bleu_comet.py \
+            python ./evaluation/mt_quality/eval_bleu_comet.py \
                 --output_dir $output_dir \
                 --criteria $criteria
         done

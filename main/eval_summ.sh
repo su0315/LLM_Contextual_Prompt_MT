@@ -18,7 +18,7 @@ for tgt_lang in $tgt_langs; do
                 cfg_file="/home/sumire/thesis/LLM_Contextual_Prompt_MT/main/config/summarization/distilroberta/ted/$tgt_lang/1-$((context_size+1))to1-$((summarized_size+1)).yaml"
             fi  
             echo $cfg_file
-            python main/eval_summ.py \
+            python ./summarisation/eval_summ.py \
                 --cfg "$cfg_file"
         done
     done

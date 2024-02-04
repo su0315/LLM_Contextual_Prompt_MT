@@ -10,8 +10,8 @@ import os
 from transformers import DataCollatorForLanguageModeling
 from functools import partial
 import json
-from main.preprocess import preprocess_function, preprocess_function_contrapro, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd, preprocess_function_summ_iwslt
-from main.metrics import compute_metrics
+from preprocess import preprocess_function, preprocess_function_contrapro, generate_few_shots, preprocess_function_bsd, generate_prompt_bsd, preprocess_function_summ_iwslt
+from metrics import compute_metrics
 from jsonargparse import (ActionConfigFile, ArgumentParser, Namespace,
                           namespace_to_dict)
 from tqdm import tqdm

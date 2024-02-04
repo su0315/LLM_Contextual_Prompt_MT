@@ -18,12 +18,12 @@ for tgt_lang in $tgt_langs; do
     for context_size in $context_sizes; do
         for summarized_size in $summarized_sizes; do
             if [ "$context_side" = "$src_side" ]; then 
-                cfg_file="/home/sumire/thesis/LLM_Contextual_Prompt_MT/main/config/zs-p1-Llama-2-70b-instruct-v2/summarized_context/ted/$tgt_lang/$((context_size+1))-1to$((summarized_size+1))-1.yaml"
+                cfg_file="./config/zs-p1-Llama-2-70b-instruct-v2/summarized_context/ted/$tgt_lang/$((context_size+1))-1to$((summarized_size+1))-1.yaml"
             else
-                cfg_file="/home/sumire/thesis/LLM_Contextual_Prompt_MT/main/config/zs-p1-Llama-2-70b-instruct-v2/summarized_context/ted/$tgt_lang/1-$((context_size+1))to1-$((summarized_size+1)).yaml"
+                cfg_file="./config/zs-p1-Llama-2-70b-instruct-v2/summarized_context/ted/$tgt_lang/1-$((context_size+1))to1-$((summarized_size+1)).yaml"
             fi
             echo $cfg_file
-            python main/eval_mt.py \
+            python ./evaluation/mt_quality/eval_mt.py \
                 --cfg "$cfg_file"
         done
     done

@@ -1,3 +1,3 @@
 #! /bin/sh
 export PYTHONPATH=.:$PYTHONPATH
-python main/prepare_data.py 
+python prepare_data.py 

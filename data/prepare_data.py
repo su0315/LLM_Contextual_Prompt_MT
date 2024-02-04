@@ -1,4 +1,4 @@
-from data.xml_to_json import generate_parallel_df
+from xml_to_json import generate_parallel_df
 
 def main():
     parallel_lang_list = [["en", "ja"],["en", "ar"], ["en",  "fr"], ["en", "de"], ["en", "ko"], ["en", "zh"]]

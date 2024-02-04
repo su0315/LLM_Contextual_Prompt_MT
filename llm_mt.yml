@@ -1,4 +1,4 @@
-name: llm_mt3
+name: llm_mt
 channels:
   - anaconda
   - conda-forge

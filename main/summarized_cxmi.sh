@@ -20,13 +20,12 @@ for lang in $tgt_langs; do
         for summarized_size in $summarized_sizes; do
             if [ "$context_side" = "$src_side" ]; then
                 context="$((context_size+1))-1to$((summarized_size+1))-1"
-                echo "aaaaaaaa"
             else
                 context="$tgt_lang/1-$((context_size+1))to1-$((summarized_size+1))"
             fi
             in_path_context=${data_dir}/cont_summ_ted/eval_mt/en-${lang}/${model_type}-${lang}-${context}
             echo "$in_path_context"
-            python /home/sumire/thesis/LLM_Contextual_Prompt_MT/main/cxmi.py \
+            python ./evaluation/cxmi/cxmi.py \
                 --in_path_context ${in_path_context} \
                 --in_path_base ${in_path_base} \
                 --out_path ${in_path_context}/cxmi.txt 

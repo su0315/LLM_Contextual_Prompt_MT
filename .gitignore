@@ -204,6 +204,11 @@ data/muda_tagged/
 muda_working_env.yml
 transformersum.yml
 results/
-notebook/
+/home/sumire/thesis/LLM_Contextual_Prompt_MT/notebook/
 notebook/result_visualization/context_size_comparison.ipynb
 notebook/result_visualization/1-1_model_comparison.ipynb
+tokenizer_comparison.py
+main/tokenizer_comparison.py
+main/mbart_trial.py
+main/tokenizer_comparison.py
+/home/sumire/thesis/LLM_Contextual_Prompt_MT/results/
