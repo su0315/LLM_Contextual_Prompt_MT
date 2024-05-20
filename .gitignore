@@ -212,3 +212,5 @@ main/tokenizer_comparison.py
 main/mbart_trial.py
 main/tokenizer_comparison.py
 /home/sumire/thesis/LLM_Contextual_Prompt_MT/results/
+notebook
+main/config/notusingllama-13b/
