@@ -55,7 +55,7 @@ def read_arguments() -> ArgumentParser:
 
 
 def initialize_model(model_checkpoint, api):
-    if "llama" in model_checkpoint:
+    if "llama" in model_checkpoint and api is False:
         
         tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)  # ,  truncation=True, padding='max_length', max_new_tokens=250, return_tensors="pt") # padding_side = 'left',
         tokenizer.add_special_tokens({"pad_token":"<pad>"})
@@ -65,30 +65,31 @@ def initialize_model(model_checkpoint, api):
         model.config.pad_token_id = tokenizer.pad_token_id
     
     elif api is True:
-        #from text_generation.client import Client
-        from text_generation import Client
+        from text_generation.client import Client
+        #from text_generation import Client
         
-        TGI_CENTRAL_ADDRESS="localhost:8765"
-        models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
+        TGI_CENTRAL_ADDRESS= "localhost:8082"#"localhost:8082" #"0.0.0.0:8082"
+        #models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
         #models = Client(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
-        #model = Client(f"http://{TGI_CENTRAL_ADDRESS}")
-        print (models)
+        model = Client(f"http://{TGI_CENTRAL_ADDRESS}")
+        #model = Client("http://0.0.0.0:8082")
+        print (model)
         
         #models.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
         tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
         
         # TODO: adapt for new api 
-        if "Llama-2-70b-instruct-v2" in model_checkpoint:
-            model_name = None
-            for i in range(len(models)):
-                if models[i]["name"] == "upstage/Llama-2-70b-instruct-v2":
-                    model_name, model_addr = models[i]["name"], models[i]["address"]
-                    print (model_name, model_addr)
-                    model = Client("http://" + model_addr)
-                    model.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
-                    tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
-        if model_name is None:
-            raise Exception('model upstage/Llama-2-70b-instruct-v2 is not available.')
+        # if api is True:
+        #     model_name = None
+        #     for i in range(len(models)):
+        #         if models[i]["name"] == model_checkpoint:
+        #             model_name, model_addr = models[i]["name"], models[i]["address"]
+        #             print (model_name, model_addr)
+        #             model = Client("http://" + model_addr)
+        #             model.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
+        #             tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
+        # if model_name is None:
+        #     raise Exception('model upstage/Llama-2-70b-instruct-v2 is not available.')
         
             
 
@@ -477,7 +478,7 @@ def main():
             context_size = f"1-{tgt_context_size+1}to1-{num_summary_sentences+1}"
         cfg_name = f"Llama-2-70b-instruct-v2-sum-{summarized_contexts}-{data_name}-{tgt_lang}-{context_size}"
 
-        print (cfg_name)
+        print (i)
     
     
     # Initialize Model
