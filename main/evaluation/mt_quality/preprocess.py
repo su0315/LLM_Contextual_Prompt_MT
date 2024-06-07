@@ -89,7 +89,7 @@ def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt
 
     # Context for source sentence
     
-    if prompt_type == 1:
+    if prompt_type == 1 or 4:
         context_inst = f"Given context:{sep_token}" 
     elif prompt_type == 2:
         context_inst = ""
@@ -113,7 +113,7 @@ def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt
                     #concat_input = _context + prompt + ip + after_ip 
                     #inputs.append(concat_input)
                     if api is True:
-        
+                        print ("NOOOOOOO")
                         concat_input = "### User:\n" + context_inst + _context + few_shots + ip + "\n\n### Assistant:\n"
                     else:
                         concat_input = context_inst + _context + few_shots + ip + after_ip # need to check when context size == 0, there are no two times sep_token 
@@ -127,11 +127,16 @@ def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt
                         _context += break_token  # break token only when context exists
                     
                     if api is True:
+                        print ("NOOOOOO2")
                         concat_input = "### User:\n" + few_shots + _context + ip + "\n\n### Assistant:\n"
 
                     else:
                         concat_input = few_shots + _context + ip + after_ip # break token before ip or not ?
-
+                
+                elif prompt_type == 4:
+                    print ("YESSSSSSS")
+                    concat_input = context_inst +_context + sep_token + few_shots + ip + after_ip # need to check when context size == 0, there are no two times sep_token 
+                
                 inputs.append(concat_input)
 
     else:
@@ -142,7 +147,8 @@ def preprocess_function(classified_path, src_context_size, tgt_context_size, tgt
         else:
             #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
 
-            if api:
+            if api and prompt_type==1:
+                print ("NOOOOOO3")
                 inputs = ["### User:\n" + few_shots + sent + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
                 #if prompt_type == 1:
                     #inputs = ["### User:\n" + few_shots + sent + "\n\n### Assistant:\n" for doc in data["doc"] for sent in doc["en"]] 
@@ -325,7 +331,7 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
     inputs = []
     labels = []
     # Context for source sentence
-    if prompt_type == 1 and src_context_size != 0 :
+    if prompt_type == 1 or 4 and src_context_size != 0 :
         context_inst = f"Given context:{sep_token}" 
     
     else: 
@@ -335,6 +341,7 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
         print (len(src_intersec), len(tgt_intersec), len(context_intersec)) # 8828 for nonzero ante # 3290 for 1000 samples for ante = 1 + nonzero
         
         for ip, tgt, _context in zip(src_intersec, tgt_intersec, context_intersec):
+            print ("NOOOO4")
             concat_input = "### User:\n" + context_inst + _context + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
             inputs.append(concat_input)
             labels.append(tgt)
@@ -342,6 +349,7 @@ def preprocess_function_contrapro(data_path, tgt_lang, src_context_size, prompt_
     else:
         print (len(src_intersec), len(tgt_intersec)) # 3132 for sample 1 + sample 2
         for ip, tgt in zip(src_intersec, tgt_intersec):
+            print ("NOOOOOO5")
             concat_input = "### User:\n" + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
             inputs.append(concat_input)
             labels.append(tgt)
@@ -395,6 +403,7 @@ def preprocess_function_summ_iwslt(data, tgt_lang, src_context_size, tgt_context
     print (len(src_intersec), len(context_intersec)) # 8828 for nonzero ante # 3290 for 1000 samples for ante = 1 + nonzero
         
     for ip, _context in zip(src_intersec, context_intersec):
+        print ("NOOOOOO6")
         concat_input = "### User:\n" + context_inst + _context + f"Translate English to {target_language[tgt_lang]}:{sep_token}" + ip + "\n\n### Assistant:\n"            
         inputs.append(concat_input)
 
@@ -463,7 +472,7 @@ def preprocess_function_bsd(src_context_size, tgt_lang, api, model_checkpoint, f
                     #concat_input = _context + prompt + ip + after_ip 
                     #inputs.append(concat_input)
                     if api is True:
-                        
+                        print ("NOOOOOO7")
                         concat_input = "### User:\n" + context_inst + _context + few_shots + ip + "\n\n### Assistant:\n"
                     else:
                         concat_input = context_inst + _context + few_shots + ip + after_ip # need to check when context size == 0, there are no two times sep_token 
@@ -477,6 +486,7 @@ def preprocess_function_bsd(src_context_size, tgt_lang, api, model_checkpoint, f
                         _context += break_token  # break token only when context exists
                     
                     if api is True:
+                        print ("NOOOOOOO8")
                         concat_input = "### User:\n" + few_shots + _context + ip + "\n\n### Assistant:\n"
 
                     else:
@@ -493,6 +503,7 @@ def preprocess_function_bsd(src_context_size, tgt_lang, api, model_checkpoint, f
             #inputs = [f"Given context:{sep_token}" + prompt + sent + after_ip for doc in data["doc"] for sent in doc["en"]]  
 
             if api:
+                print ("NOOOOOOOO9")
                 inputs = ["### User:\n" + few_shots + sent['en_sentence'] + "\n\n### Assistant:\n" for doc in data["conversation"] for sent in doc] 
             else:
                 inputs = [few_shots + sent['en_sentence'] + after_ip for doc in data["conversation"] for sent in doc]  # When6 without context prompt 

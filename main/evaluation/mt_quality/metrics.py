@@ -16,13 +16,19 @@ def postprocess_text(preds, labels, input_ids, model_checkpoint, api, prompt_typ
     if "llama" in model_checkpoint: # only original llama, not using "###User:"
         preds = [pred.split("\n")[0] for pred in preds] # Extract only the first prediction 
     
-    if prompt_type ==1 and api:
+    if prompt_type == 1:
+        after_ip = "\n"
+        
+    if prompt_type == 4:
+        after_ip = ">"
+        
+    if prompt_type == 1 or 4 and api:
         tgt_preds = []
         
         for pred in preds:
             if "\n" in pred:
                 #print ("break token founded")
-                tgt_pred = pred.split("\n")[-1]
+                tgt_pred = pred.split(after_ip)[-1]
                 #print ("split1", tgt_pred)
                 tgt_preds.append(tgt_pred)
             else:
