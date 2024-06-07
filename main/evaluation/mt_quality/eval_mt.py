@@ -68,14 +68,14 @@ def initialize_model(model_checkpoint, api):
         from text_generation.client import Client
         #from text_generation import Client
         
-        TGI_CENTRAL_ADDRESS= "localhost:8082"#"localhost:8082" #"0.0.0.0:8082"
+        TGI_CENTRAL_ADDRESS="0.0.0.0:8082" #"localhost:8082"#"localhost:8082" #"0.0.0.0:8082"
         #models = Client.list_from_central(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
         #models = Client(central_url=f"http://{TGI_CENTRAL_ADDRESS}")
         model = Client(f"http://{TGI_CENTRAL_ADDRESS}")
         #model = Client("http://0.0.0.0:8082")
         print (model)
         
-        #models.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
+        model.timeout = 1000 # Increasing timeout in seconds, Client class: self.timeout = 10 in default             
         tokenizer = LlamaTokenizer.from_pretrained(model_checkpoint, use_auth_token=True)
         
         # TODO: adapt for new api 
@@ -288,7 +288,12 @@ def evaluate_mt(
             print ("Hi")
 
             if "cxmi" in metrics:
-                cxmi_sep_token = "\n"
+                if prompt_type == 4:
+                    cxmi_sep_token = "=>"
+                
+                else:
+                    cxmi_sep_token = "\n"
+                
                 cxmi_sep_token_id = model.generate(
                     prompt=cxmi_sep_token,
                     do_sample=False,
@@ -309,6 +314,7 @@ def evaluate_mt(
                     ).details.prefill[1:]
 
                     last_sep_id = [prompt_scores.index(i) for i in prompt_scores if i.id==cxmi_sep_token_id][-1]
+
                     print (last_sep_id)
                     ref_scores_with_details = prompt_scores[last_sep_id+1:]
                     print (ref_scores_with_details)
